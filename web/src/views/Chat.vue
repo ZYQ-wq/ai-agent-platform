@@ -1,23 +1,14 @@
-```vue
+
 <template>
   <div class="chat-container">
 
-    <div class="top-bar">
-
-      <h2>AI 聊天</h2>
-
-      <button class="logout-btn" @click="logout">
-        退出登录
-      </button>
-
-    </div>
+    <h2>Agent聊天</h2>
 
     <div class="chat-box">
 
       <div
         v-for="(msg, idx) in messages"
         :key="idx"
-        class="message"
       >
         <strong>{{ msg.role }}:</strong>
         {{ msg.content }}
@@ -39,44 +30,32 @@
 </template>
 
 <script lang="ts">
-
-import {
-  defineComponent,
-  ref,
-  onMounted
-} from "vue";
+import { defineComponent } from "vue";
+import { ref } from "vue";
 
 import axios from "axios";
 
-import { useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 
 interface Message {
+
   role: string;
+
   content: string;
+
 }
 
 export default defineComponent({
 
   setup() {
 
-    const router = useRouter();
+    const route = useRoute();
+
+    const agentId = route.params.agentId;
 
     const messages = ref<Message[]>([]);
 
     const inputMessage = ref("");
-
-    // 页面加载检查 token
-    onMounted(() => {
-
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-
-        alert("请先登录");
-
-        router.push("/login");
-      }
-    });
 
     const sendMessage = async () => {
 
@@ -84,17 +63,15 @@ export default defineComponent({
 
       const token = localStorage.getItem("token");
 
-      // 没 token
       if (!token) {
 
-        alert("登录已失效");
-
-        router.push("/login");
+        alert("请先登录");
 
         return;
+
       }
 
-      // 添加用户消息
+      // 用户消息
       messages.value.push({
         role: "你",
         content: inputMessage.value
@@ -103,7 +80,7 @@ export default defineComponent({
       try {
 
         const res = await axios.post(
-          "http://127.0.0.1:8000/chat/",
+          `http://127.0.0.1:8000/chat/${agentId}`,
           {
             message: inputMessage.value
           },
@@ -119,50 +96,27 @@ export default defineComponent({
           content: res.data.response
         });
 
-      } catch (err: any) {
+        inputMessage.value = "";
 
-        console.error(err);
-
-        // token失效
-        if (err.response?.status === 401) {
-
-          alert("登录已过期，请重新登录");
-
-          localStorage.removeItem("token");
-
-          localStorage.removeItem("email");
-
-          router.push("/login");
-
-          return;
-        }
+      } catch (err) {
 
         messages.value.push({
           role: "AI",
           content: "发送失败"
         });
+
       }
 
-      inputMessage.value = "";
-    };
-
-    // 退出登录
-    const logout = () => {
-
-      localStorage.removeItem("token");
-
-      localStorage.removeItem("email");
-
-      router.push("/login");
     };
 
     return {
       messages,
       inputMessage,
-      sendMessage,
-      logout
+      sendMessage
     };
+
   }
+
 });
 </script>
 
@@ -170,45 +124,27 @@ export default defineComponent({
 
 .chat-container {
   max-width: 700px;
-  margin: 50px auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.logout-btn {
-  background: red;
-  color: white;
+  margin: 40px auto;
 }
 
 .chat-box {
   border: 1px solid #ccc;
   min-height: 400px;
-  padding: 10px;
-  margin: 20px 0;
+  padding: 20px;
+  margin-bottom: 20px;
   overflow-y: auto;
 }
 
-.message {
-  margin-bottom: 10px;
-}
-
 input {
+  width: 100%;
   padding: 10px;
-  font-size: 16px;
   margin-bottom: 10px;
 }
 
 button {
   padding: 10px;
-  font-size: 16px;
   cursor: pointer;
 }
 
 </style>
-```
+

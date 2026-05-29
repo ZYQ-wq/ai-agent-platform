@@ -52,13 +52,14 @@ export default defineComponent({
           password: password.value
         });
 
-        // 保存 JWT token 到 localStorage
+        // 保存 JWT token
         localStorage.setItem("token", res.data.access_token);
-        // 保存用户 email 方便前端显示或其他用途
         localStorage.setItem("email", email.value);
 
-        // 跳转到聊天页面
-        router.push("/chat");
+        // 【修改点】跳转到智能体列表页，而不是聊天页
+        // 假设你在 router 中给 Agents 配置的路径是 /agents
+        router.push("/agents");
+
       } catch (err: any) {
         if (err.response) {
           message.value = err.response.data.detail || "登录失败";

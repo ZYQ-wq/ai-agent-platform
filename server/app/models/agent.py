@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column,Integer,String,Text,ForeignKey,DateTime
 
 from datetime import datetime
@@ -5,9 +6,9 @@ from datetime import datetime
 from app.core.database import Base
 
 
-class Memory(Base):
+class Agent(Base):
 
-    __tablename__ = "memories"
+    __tablename__ = "agents"
 
     id = Column(
         Integer,
@@ -15,28 +16,26 @@ class Memory(Base):
         index=True
     )
 
-    # 所属用户
+    # Agent所属用户
     user_id = Column(
         Integer,
-        ForeignKey("users.id"),
-        nullable=False
+        ForeignKey("users.id")
     )
 
-    # 所属Agent
-    agent_id = Column(
-        Integer,
-        ForeignKey("agents.id"),
-        nullable=False
-    )
-
-    # 消息角色
-    role = Column(
+    # Agent名称
+    name = Column(
         String,
         nullable=False
     )
 
-    # 消息内容
-    content = Column(
+    # 简介
+    description = Column(
+        Text,
+        nullable=True
+    )
+
+    # 系统Prompt
+    system_prompt = Column(
         Text,
         nullable=False
     )
