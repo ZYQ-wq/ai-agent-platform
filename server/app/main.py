@@ -12,6 +12,7 @@ from app.core.database import Base,engine
 from app.models.user import User
 from app.models.memory import Memory
 from app.models.agent import Agent
+from app.models.memory_summary import MemorySummary
 
 
 
