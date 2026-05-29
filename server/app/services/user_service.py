@@ -8,34 +8,6 @@ from app.core.auth import (
     create_access_token
 )
 
-# def register_service(username, email, password):
-
-#     db = SessionLocal()
-
-#     exist_user = db.query(User).filter(
-#         User.email == email
-#     ).first()
-
-#     if exist_user:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="邮箱已存在"
-#         )
-
-#     new_user = User(
-#         username=username,
-#         email=email,
-#         password=hash_password(password)
-#     )
-
-#     db.add(new_user)
-
-#     db.commit()
-
-#     db.close()
-
-#     return "注册成功"
-
 def register_service(username, email, password):
 
     db = SessionLocal()

@@ -1,4 +1,164 @@
+# from openai import OpenAI
+
+# from app.core.config import (
+#     OPENAI_API_KEY,
+#     OPENAI_BASE_URL
+# )
+
+# from app.models.memory import Memory
+# from app.models.user import User
+# from app.models.agent import Agent
+# from app.models.memory_summary import MemorySummary
+
+# from app.services.embedding_service import get_embedding
+# from app.services.memory_manager import MemoryManager
+
+# import json
+
+# from app.core.database import SessionLocal
+
+
+# client = OpenAI(
+#     api_key=OPENAI_API_KEY,
+#     base_url=OPENAI_BASE_URL
+# )
+
+
+# def chat_with_agent(
+#     message,
+#     user_email,
+#     agent_id
+# ):
+
+#     db = SessionLocal()
+
+#     try:
+
+#         # 查询用户
+#         user = db.query(User).filter(
+#             User.email == user_email
+#         ).first()
+
+#         if not user:
+
+#             raise Exception("用户不存在")
+
+#         # 查询Agent
+#         agent = db.query(Agent).filter(
+#             Agent.id == agent_id,
+#             Agent.user_id == user.id
+#         ).first()
+
+#         if not agent:
+
+#             raise Exception("Agent不存在")
+        
+#         # 初始化 MemoryManager 
+#         memory_manager = MemoryManager()
+
+#         # 获取短期历史
+#         short_histories = memory_manager.get_recent( user.id, agent.id )
+
+#         for h in short_histories:
+#             h.embedding = json.loads(h.embedding) if h.embedding else None
+
+#         # 获取长期摘要
+#         long_summary = get_summary(user.id, agent.id, db)
+
+#         # 3. 获取相关记忆（RAG） 
+#         relevant_memories = memory_manager.search_relevant_memories( 
+#             user.id, agent.id, message )
+
+#         # system prompt + summary +短期历史
+#         messages = []
+#         if long_summary:
+#             messages.append({"role": "system", "content": f"用户长期记忆摘要：{long_summary}"})
+
+#         messages.append({"role": "system", "content": agent.system_prompt})
+
+#         # RAG相关记忆 
+#         if relevant_memories: 
+#             memory_text = "\n".join([
+#                 f"{m['role']}: {m['content']}" 
+#                 for m in relevant_memories ]) 
+            
+#             messages.append({ "role": "system", "content": f"以下是与当前问题相关的历史记忆：\n{memory_text}" })
+
+#         for h in short_histories:
+#             # 【优化点】：先判断是不是字符串，防止重复解码报错
+#             if isinstance(h.embedding, str):
+#                 try:
+#                     h.embedding = json.loads(h.embedding)
+#                 except:
+#                     h.embedding = None
+#             # 如果已经是 list 或 None，就保持不动
+        
+#         for h in short_histories: 
+#             messages.append({ "role": h["role"], "content": h["content"] })
+
+#         # 当前用户消息
+#         messages.append({"role": "user", "content": message})
+
+#         # 调用AI
+#         response = client.chat.completions.create(
+#             model="qwen-max",
+#             messages=messages
+#         )
+#         ai_message = response.choices[0].message.content
+
+#         # 存储短期消息
+#         memory_manager.add_message( user.id, agent.id, "user", message )
+
+#         memory_manager.add_message( user.id, agent.id, "assistant", ai_message )
+
+#         # 生成/更新长期摘要
+#         # 简单策略：把所有短期历史和当前消息拼接后AI压缩成摘要
+#         summary_input = "\n".join([h.content for h in short_histories] + [message, ai_message])
+#         summary_response = client.chat.completions.create(
+#             model="qwen-max",
+#             messages=[{"role": "system", "content": "将以下内容压缩为长期摘要，只保留关键信息"} , {"role": "user", "content": summary_input}]
+#         )
+#         new_summary = summary_response.choices[0].message.content
+#         update_summary(user.id, agent.id, new_summary, db)
+
+#         return ai_message
+
+#     finally:
+
+#         db.close()
+
+
+# def get_summary(user_id: int, agent_id: int, db):
+#     """获取长期摘要"""
+#     summary_obj = db.query(MemorySummary).filter(
+#         MemorySummary.user_id == user_id,
+#         MemorySummary.agent_id == agent_id
+#     ).first()
+#     if summary_obj:
+#         return summary_obj.summary
+#     return ""
+
+# def update_summary(user_id: int, agent_id: int, new_summary: str, db):
+#     """更新长期摘要"""
+#     summary_obj = db.query(MemorySummary).filter(
+#         MemorySummary.user_id == user_id,
+#         MemorySummary.agent_id == agent_id
+#     ).first()
+#     if summary_obj:
+#         summary_obj.summary = new_summary
+#     else:
+#         summary_obj = MemorySummary(
+#             user_id=user_id,
+#             agent_id=agent_id,
+#             summary=new_summary
+#         )
+#         db.add(summary_obj)
+#     db.commit()
+
+
+
 from openai import OpenAI
+import json
 
 from app.core.config import (
     OPENAI_API_KEY,
@@ -8,6 +168,9 @@ from app.core.config import (
 from app.models.memory import Memory
 from app.models.user import User
 from app.models.agent import Agent
+from app.models.memory_summary import MemorySummary
+
+from app.services.memory_manager import MemoryManager
 
 from app.core.database import SessionLocal
 
@@ -34,7 +197,6 @@ def chat_with_agent(
         ).first()
 
         if not user:
-
             raise Exception("用户不存在")
 
         # 查询Agent
@@ -44,29 +206,73 @@ def chat_with_agent(
         ).first()
 
         if not agent:
-
             raise Exception("Agent不存在")
 
-        # 查询历史记忆
-        histories = db.query(Memory).filter(
-            Memory.user_id == user.id,
-            Memory.agent_id == agent.id
-        ).all()
+        # 初始化 MemoryManager
+        memory_manager = MemoryManager()
 
-        # system prompt
-        messages = [
-            {
+        # =========================
+        # 1. 获取短期记忆
+        # =========================
+        short_histories = memory_manager.get_recent(
+            user.id,
+            agent.id
+        )
+
+        # =========================
+        # 2. 获取长期摘要
+        # =========================
+        long_summary = get_summary(
+            user.id,
+            agent.id,
+            db
+        )
+
+        # =========================
+        # 3. 获取相关记忆（RAG）
+        # =========================
+        relevant_memories = memory_manager.search_relevant_memories(
+            user.id,
+            agent.id,
+            message
+        )
+
+        # =========================
+        # 4. 构建 Prompt
+        # =========================
+        messages = []
+
+        # 长期摘要
+        if long_summary:
+            messages.append({
                 "role": "system",
-                "content": agent.system_prompt
-            }
-        ]
+                "content": f"用户长期记忆摘要：{long_summary}"
+            })
 
-        # 历史消息
-        for history in histories:
+        # Agent设定
+        messages.append({
+            "role": "system",
+            "content": agent.system_prompt
+        })
+
+        # RAG相关记忆
+        if relevant_memories:
+
+            memory_text = "\n".join([
+                f"{m['role']}: {m['content']}"
+                for m in relevant_memories
+            ])
 
             messages.append({
-                "role": history.role,
-                "content": history.content
+                "role": "system",
+                "content": f"以下是与当前问题相关的历史记忆：\n{memory_text}"
+            })
+
+        # 短期记忆
+        for h in short_histories:
+            messages.append({
+                "role": h["role"],
+                "content": h["content"]
             })
 
         # 当前用户消息
@@ -75,17 +281,9 @@ def chat_with_agent(
             "content": message
         })
 
-        # 保存用户消息
-        user_memory = Memory(
-            user_id=user.id,
-            agent_id=agent.id,
-            role="user",
-            content=message
-        )
-
-        db.add(user_memory)
-
-        # 调用AI
+        # =========================
+        # 5. 调用 LLM
+        # =========================
         response = client.chat.completions.create(
             model="qwen-max",
             messages=messages
@@ -93,20 +291,115 @@ def chat_with_agent(
 
         ai_message = response.choices[0].message.content
 
-        # 保存AI消息
-        ai_memory = Memory(
-            user_id=user.id,
-            agent_id=agent.id,
-            role="assistant",
-            content=ai_message
+        # =========================
+        # 6. 保存用户消息
+        # =========================
+        memory_manager.add_message(
+            user.id,
+            agent.id,
+            "user",
+            message
         )
 
-        db.add(ai_memory)
+        # =========================
+        # 7. 保存AI消息
+        # =========================
+        memory_manager.add_message(
+            user.id,
+            agent.id,
+            "assistant",
+            ai_message
+        )
 
-        db.commit()
+        # =========================
+        # 8. 更新长期摘要
+        # =========================
+        summary_input = "\n".join([
+            h["content"]
+            for h in short_histories
+        ] + [message, ai_message])
+
+        summary_response = client.chat.completions.create(
+            model="qwen-max",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "将以下内容压缩为长期摘要，保留关键信息"
+                },
+                {
+                    "role": "user",
+                    "content": summary_input
+                }
+            ]
+        )
+
+        new_summary = (
+            summary_response
+            .choices[0]
+            .message
+            .content
+        )
+
+        update_summary(
+            user.id,
+            agent.id,
+            new_summary,
+            db
+        )
 
         return ai_message
 
     finally:
 
         db.close()
+
+
+def get_summary(
+    user_id: int,
+    agent_id: int,
+    db
+):
+
+    summary_obj = db.query(
+        MemorySummary
+    ).filter(
+        MemorySummary.user_id == user_id,
+        MemorySummary.agent_id == agent_id
+    ).first()
+
+    if summary_obj:
+        return summary_obj.summary
+
+    return ""
+
+
+def update_summary(
+    user_id: int,
+    agent_id: int,
+    new_summary: str,
+    db
+):
+
+    summary_obj = db.query(
+        MemorySummary
+    ).filter(
+        MemorySummary.user_id == user_id,
+        MemorySummary.agent_id == agent_id
+    ).first()
+
+    if summary_obj:
+
+        summary_obj.summary = new_summary
+
+    else:
+
+        summary_obj = MemorySummary(
+            user_id=user_id,
+            agent_id=agent_id,
+            summary=new_summary
+        )
+
+        db.add(summary_obj)
+
+    db.commit()
+

@@ -41,6 +41,12 @@ class Memory(Base):
         nullable=False
     )
 
+    # 向量Embedding
+    embedding = Column(
+        Text,
+        nullable=True
+    )
+
     # 创建时间
     created_at = Column(
         DateTime,
