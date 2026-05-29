@@ -1,17 +1,19 @@
+
 import {
   createRouter,
   createWebHistory
 } from "vue-router";
 
-import Login from "../components/Login.vue";
-import Register from "../components/Register.vue";
-import Chat from "../components/Chat.vue";
+import Login from "../views/Login.vue";
+import Register from "../views/Register.vue";
+import Chat from "../views/Chat.vue";
+import Agents from "../views/Agents.vue";
 
 const routes = [
 
   {
     path: "/",
-    redirect: "/login"
+    redirect: "/agents"
   },
 
   {
@@ -25,12 +27,21 @@ const routes = [
   },
 
   {
-    path: "/chat",
+    path: "/agents",
+    component: Agents,
+    meta: {
+      requiresAuth: true
+    }
+  },
+
+  {
+    path: "/chat/:agentId",
     component: Chat,
     meta: {
       requiresAuth: true
     }
   }
+
 ];
 
 const router = createRouter({
@@ -38,24 +49,25 @@ const router = createRouter({
   routes
 });
 
+
 // 路由守卫
 router.beforeEach((to, from, next) => {
 
-  // 判断是否需要登录
-  if (to.meta.requiresAuth) {
+  const token = localStorage.getItem("token");
 
-    const token = localStorage.getItem("token");
+  if (
+    to.meta.requiresAuth &&
+    !token
+  ) {
 
-    // 没 token
-    if (!token) {
+    next("/login");
 
-      alert("请先登录");
+  } else {
 
-      return next("/login");
-    }
+    next();
+
   }
 
-  next();
 });
 
 export default router;

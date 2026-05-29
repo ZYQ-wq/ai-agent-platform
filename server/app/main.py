@@ -4,13 +4,16 @@ load_dotenv()
 from fastapi import FastAPI
 
 from app.api.user import router as user_router
+from app.api.chat import router as chat_router
+from app.api.agent import router as agent_router
 
 from app.core.database import Base,engine
 
 from app.models.user import User
 from app.models.memory import Memory
+from app.models.agent import Agent
 
-from app.api.chat import router as chat_router
+
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -32,6 +35,12 @@ app.include_router(
     chat_router, 
     prefix="/chat", 
     tags=["Chat"]
+)
+
+app.include_router(
+    agent_router,
+    prefix="/agents",
+    tags=["Agents"]
 )
 
 
