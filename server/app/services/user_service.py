@@ -1,100 +1,18 @@
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from app.models.user import User
-from app.core.database import SessionLocal
-from app.core.auth import (
-    hash_password,
-    verify_password,
-    create_access_token
-)
+from app.core.security import get_password_hash
+from app.schemas.user import UserCreate
 
-# def register_service(username, email, password):
+def get_user_by_username(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()
 
-#     db = SessionLocal()
+def get_user_by_email(db: Session, email: str):
+    return db.query(User).filter(User.email == email).first()
 
-#     exist_user = db.query(User).filter(
-#         User.email == email
-#     ).first()
-
-#     if exist_user:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="邮箱已存在"
-#         )
-
-#     new_user = User(
-#         username=username,
-#         email=email,
-#         password=hash_password(password)
-#     )
-
-#     db.add(new_user)
-
-#     db.commit()
-
-#     db.close()
-
-#     return "注册成功"
-
-def register_service(username, email, password):
-
-    db = SessionLocal()
-
-    try:
-
-        new_user = User(
-            username=username,
-            email=email,
-            password=hash_password(password)
-        )
-
-        db.add(new_user)
-
-        db.commit()
-
-        return "注册成功"
-
-    except IntegrityError:
-
-        db.rollback()
-
-        raise HTTPException(
-            status_code=400,
-            detail="用户名或邮箱已存在"
-        )
-
-    finally:
-
-        db.close()
-
-def login_service(email, password):
-
-    db = SessionLocal()
-
-    user = db.query(User).filter(
-        User.email == email
-    ).first()
-
-    if not user:
-        raise HTTPException(
-            status_code=400,
-            detail="用户不存在"
-        )
-    print(user.password)
-    print(type(user.password))
-    print(len(user.password))
-
-    if not verify_password(
-        password,
-        user.password
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="密码错误"
-        )
-
-    token = create_access_token({
-        "sub": user.email
-    })
-
-    return token
+def create_user(db: Session, user_in: UserCreate):
+    hashed_password = get_password_hash(user_in.password)
+    db_user = User(username=user_in.username, email=user_in.email, password=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user

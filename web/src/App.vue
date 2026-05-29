@@ -1,17 +1,23 @@
 <template>
-  <!-- 这是路由容器 -->
-  <router-view />
+  <div id="app">
+    <!-- 这里不需要写导航栏，因为登录和注册是全屏独立页面 -->
+    <router-view />
+  </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({});
+<script>
+export default {
+  name: 'App'
+}
 </script>
 
 <style>
-/* 全局样式可写在这里，也可以继续用 style.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 body {
-  font-family: Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 </style>

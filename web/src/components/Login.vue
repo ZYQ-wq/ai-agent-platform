@@ -1,105 +1,110 @@
 <template>
   <div class="auth-container">
-    <h2>登录</h2>
+    <div class="auth-box">
+      <h2 class="title">系统登录</h2>
+      
+      <form @submit.prevent="handleLogin" class="auth-form">
+        <div class="form-group">
+          <label>用户名</label>
+          <input v-model="form.username" type="text" placeholder="请输入用户名" required />
+        </div>
 
-    <input
-      v-model="email"
-      placeholder="邮箱"
-      type="email"
-    />
+        <div class="form-group">
+          <label>邮箱</label>
+          <input v-model="form.email" type="email" placeholder="请输入邮箱" required />
+        </div>
 
-    <input
-      v-model="password"
-      placeholder="密码"
-      type="password"
-    />
+        <div class="form-group">
+          <label>密码</label>
+          <input v-model="form.password" type="password" placeholder="请输入密码" required />
+        </div>
 
-    <button @click="loginUser">
-      登录
-    </button>
+        <div v-if="error" class="error-msg">{{ error }}</div>
 
-    <p class="message">{{ message }}</p>
+        <button type="submit" class="submit-btn" :disabled="loading">
+          {{ loading ? '登录中...' : '登 录' }}
+        </button>
+      </form>
 
-    <p>
-      没有账号？
-      <router-link to="/register">去注册</router-link>
-    </p>
+      <div class="switch-link">
+        <span>还没有账号？</span>
+        <router-link to="/register" class="link-text">立即注册</router-link>
+      </div>
+    </div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref } from "vue";
-import axios from "axios";
-import { useRouter } from "vue-router";
+<script>
+import axios from 'axios';
 
-export default defineComponent({
-  setup() {
-    const router = useRouter();
-
-    const email = ref("");
-    const password = ref("");
-    const message = ref("");
-
-    const loginUser = async () => {
-      if (!email.value || !password.value) {
-        message.value = "邮箱和密码不能为空";
-        return;
-      }
-
-      try {
-        const res = await axios.post("http://127.0.0.1:8000/users/login", {
-          email: email.value,
-          password: password.value
-        });
-
-        // 保存 JWT token 到 localStorage
-        localStorage.setItem("token", res.data.access_token);
-        // 保存用户 email 方便前端显示或其他用途
-        localStorage.setItem("email", email.value);
-
-        // 跳转到聊天页面
-        router.push("/chat");
-      } catch (err: any) {
-        if (err.response) {
-          message.value = err.response.data.detail || "登录失败";
-        } else {
-          message.value = "网络错误或服务器未响应";
-        }
-      }
-    };
-
+export default {
+  name: 'LoginView',
+  data() {
     return {
-      email,
-      password,
-      message,
-      loginUser
+      loading: false,
+      error: '',
+      form: {
+        username: '',
+        email: '',
+        password: ''
+      }
     };
+  },
+  methods: {
+    async handleLogin() {
+      this.error = '';
+      this.loading = true;
+      
+      try {
+        // 发送登录请求 (确保你的 vite.config.ts 里配置了 /api 代理)
+        const response = await axios.post('/api/v1/user/login', this.form);
+        
+        // ✅ 核心步骤1：先保存 Token
+        const token = response.data.access_token;
+        localStorage.setItem('access_token', token);
+        
+        // ✅ 核心步骤2：提示成功后，再执行路由跳转
+        alert('登录成功！');
+        // 这里可以改成你想要的主页路径，比如 '/chat'
+        this.$router.push('/chat'); 
+        
+      } catch (err) {
+        console.error(err);
+        this.error = err.response?.data?.detail || '登录失败，请检查网络或账号信息';
+      } finally {
+        this.loading = false;
+      }
+    }
   }
-});
+};
 </script>
 
 <style scoped>
 .auth-container {
-  max-width: 400px;
-  margin: 50px auto;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f2f5;
 }
-
-input {
-  margin-bottom: 10px;
-  padding: 8px;
-  font-size: 16px;
+.auth-box {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
 }
-
-button {
-  padding: 10px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.message {
-  color: red;
-  margin-top: 10px;
-}
+.title { margin-bottom: 30px; color: #333; }
+.auth-form .form-group { margin-bottom: 20px; text-align: left; }
+.auth-form label { display: block; margin-bottom: 8px; font-weight: 500; color: #555; font-size: 14px; }
+.auth-form input { width: 100%; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 4px; box-sizing: border-box; }
+.auth-form input:focus { border-color: #1890ff; outline: none; box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2); }
+.submit-btn { width: 100%; padding: 12px; background-color: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+.submit-btn:hover:not(:disabled) { background-color: #40a9ff; }
+.submit-btn:disabled { background-color: #bae7ff; cursor: not-allowed; }
+.error-msg { color: #ff4d4f; margin-bottom: 15px; font-size: 14px; background: #fff1f0; padding: 8px; border-radius: 4px; border: 1px solid #ffa39e; }
+.switch-link { margin-top: 20px; font-size: 14px; color: #666; }
+.link-text { color: #1890ff; text-decoration: none; margin-left: 5px; font-weight: 500; }
 </style>

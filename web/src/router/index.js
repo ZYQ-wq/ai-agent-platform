@@ -1,61 +1,35 @@
-import {
-  createRouter,
-  createWebHistory
-} from "vue-router";
-
-import Login from "../components/Login.vue";
-import Register from "../components/Register.vue";
-import Chat from "../components/Chat.vue";
+import { createRouter, createWebHistory } from 'vue-router'
+import Login from '../components/Login.vue'
+import Register from '../components/Register.vue'
+import Chat from '../components/Chat.vue' // ✅ 引入 Chat 组件
 
 const routes = [
-
-  {
-    path: "/",
-    redirect: "/login"
-  },
-
-  {
-    path: "/login",
-    component: Login
-  },
-
-  {
-    path: "/register",
-    component: Register
-  },
-
-  {
-    path: "/chat",
-    component: Chat,
-    meta: {
-      requiresAuth: true
-    }
+  { path: '/', redirect: '/login' }, 
+  { path: '/login', name: 'Login', component: Login },
+  { path: '/register', name: 'Register', component: Register },
+  // ✅ 添加 Chat 路由，并设置 meta.requiresAuth = true
+  { 
+    path: '/chat', 
+    name: 'Chat', 
+    component: Chat, 
+    meta: { requiresAuth: true } 
   }
-];
+]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
-});
+})
 
-// 路由守卫
+// 全局前置守卫
 router.beforeEach((to, from, next) => {
-
-  // 判断是否需要登录
-  if (to.meta.requiresAuth) {
-
-    const token = localStorage.getItem("token");
-
-    // 没 token
-    if (!token) {
-
-      alert("请先登录");
-
-      return next("/login");
-    }
+  const token = localStorage.getItem('access_token');
+  
+  if (to.matched.some(record => record.meta.requiresAuth) && !token) {
+    next('/login'); 
+  } else {
+    next(); 
   }
-
-  next();
 });
 
-export default router;
+export default router
