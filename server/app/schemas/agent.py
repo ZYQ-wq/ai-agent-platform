@@ -26,3 +26,8 @@ class AgentResponse(BaseModel):
 
         from_attributes = True
 
+class UpdateAgentRequest(BaseModel):
+    name: str
+    description: str
+    system_prompt: str
+

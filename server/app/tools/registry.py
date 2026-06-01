@@ -26,6 +26,23 @@ class ToolRegistry:
             }
             for tool in self.tools.values()
         ]
+    
+    def get_openai_tools(self):
+
+        tools = []
+
+        for tool in self.tools.values():
+
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.parameters
+                }
+            })
+
+        return tools
 
 
 tool_registry = ToolRegistry()

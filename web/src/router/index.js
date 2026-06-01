@@ -8,6 +8,7 @@ import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import Chat from "../views/Chat.vue";
 import Agents from "../views/Agents.vue";
+import AgentStudio from "../views/AgentStudio.vue";
 
 const routes = [
 
@@ -29,6 +30,14 @@ const routes = [
   {
     path: "/agents",
     component: Agents,
+    meta: {
+      requiresAuth: true
+    }
+  },
+
+  {
+    path: "/agents/studio",
+    component: AgentStudio,
     meta: {
       requiresAuth: true
     }

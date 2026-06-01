@@ -7,6 +7,17 @@ class CalculatorTool(BaseTool):
 
     description = "执行数学计算"
 
+    parameters = {
+        "type": "object",
+        "properties": {
+            "expression": {
+                "type": "string",
+                "description": "数学表达式"
+            }
+        },
+        "required": ["expression"]
+    }
+
     def run(self, expression: str):
 
         print(

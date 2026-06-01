@@ -4,6 +4,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
 
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+
 # 用于token身份认证配置
 SECRET_KEY = os.environ.get("SECRET_KEY", "my_super_secret_key_123")
 ALGORITHM = "HS256"
