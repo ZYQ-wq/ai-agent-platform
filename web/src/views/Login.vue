@@ -58,7 +58,7 @@ export default defineComponent({
 
         // 【修改点】跳转到智能体列表页，而不是聊天页
         // 假设你在 router 中给 Agents 配置的路径是 /agents
-        router.push("/agents");
+        router.push("/agents/studio");
 
       } catch (err: any) {
         if (err.response) {

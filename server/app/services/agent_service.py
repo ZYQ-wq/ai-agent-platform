@@ -79,3 +79,91 @@ def get_agents_service(user_email):
 
         db.close()
 
+def update_agent_service(
+    agent_id,
+    req,
+    user_email
+):
+
+    db = SessionLocal()
+
+    try:
+
+        user = db.query(User).filter(
+            User.email == user_email
+        ).first()
+
+        if not user:
+
+            raise HTTPException(
+                status_code=404,
+                detail="用户不存在"
+            )
+
+        agent = db.query(Agent).filter(
+            Agent.id == agent_id,
+            Agent.user_id == user.id
+        ).first()
+
+        if not agent:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Agent不存在"
+            )
+
+        agent.name = req.name
+        agent.description = req.description
+        agent.system_prompt = req.system_prompt
+
+        db.commit()
+
+        db.refresh(agent)
+
+        return agent
+
+    finally:
+
+        db.close()
+
+def get_agent_service(agent_id, user_email):
+    """获取单个Agent"""
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == user_email).first()
+        if not user:
+            raise HTTPException(404, "用户不存在")
+
+        agent = db.query(Agent).filter(
+            Agent.id == agent_id,
+            Agent.user_id == user.id
+        ).first()
+
+        if not agent:
+            raise HTTPException(404, "Agent不存在")
+
+        return agent
+    finally:
+        db.close()
+
+def delete_agent_service(agent_id, user_email):
+    """删除Agent"""
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == user_email).first()
+        if not user:
+            raise HTTPException(404, "用户不存在")
+
+        agent = db.query(Agent).filter(
+            Agent.id == agent_id,
+            Agent.user_id == user.id
+        ).first()
+
+        if not agent:
+            raise HTTPException(404, "Agent不存在")
+
+        db.delete(agent)
+        db.commit()
+        return {"detail": "删除成功"}
+    finally:
+        db.close()
