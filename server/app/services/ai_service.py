@@ -174,6 +174,10 @@ from app.services.memory_manager import MemoryManager
 
 from app.core.database import SessionLocal
 
+# 关于工具调用
+from app.tools.registry import tool_registry
+from app.services.tool_call_service import execute_tool_call
+
 
 client = OpenAI(
     api_key=OPENAI_API_KEY,
@@ -240,6 +244,16 @@ def chat_with_agent(
         # =========================
         # 4. 构建 Prompt
         # =========================
+        # 构建工具调用提示
+        tools_prompt = ""
+
+        for tool in tool_registry.list_tools():
+
+            tools_prompt += (
+                f"工具名称:{tool['name']}\n"
+                f"工具说明:{tool['description']}\n\n"
+            )
+
         messages = []
 
         # 长期摘要
@@ -274,6 +288,23 @@ def chat_with_agent(
                 "role": h["role"],
                 "content": h["content"]
             })
+        
+        messages.append({
+            "role": "system",
+            "content":
+                "你可以调用工具。\n"
+                "如果需要调用工具，请严格返回JSON。\n\n"
+                + tools_prompt +
+                """
+        格式：
+        {
+            "tool":"calculator",
+            "arguments":{
+                "expression":"2+2"
+            }
+        }
+        """
+        })
 
         # 当前用户消息
         messages.append({
@@ -282,14 +313,75 @@ def chat_with_agent(
         })
 
         # =========================
-        # 5. 调用 LLM
+        # 5. 第一次调用LLM
         # =========================
+
         response = client.chat.completions.create(
             model="qwen-max",
             messages=messages
         )
 
-        ai_message = response.choices[0].message.content
+        llm_output = response.choices[0].message.content
+
+        # =========================
+        # 6. 尝试解析工具调用
+        # =========================
+
+        tool_result = None
+
+        try:
+
+            tool_call = json.loads(
+                llm_output
+            )
+
+            tool_name = tool_call["tool"]
+
+            arguments = tool_call["arguments"]
+
+            print("Tool Name:", tool_name)
+            print("Arguments:", arguments)
+
+            tool_result = execute_tool_call(
+                tool_name,
+                arguments
+            )
+
+        except Exception as e:
+
+            print("Tool Parse Error:", str(e))
+
+        # =========================
+        # 7. 如果调用工具成功
+        # =========================
+
+        if tool_result:
+
+            messages.append({
+                "role": "assistant",
+                "content": llm_output
+            })
+
+            messages.append({
+                "role": "system",
+                "content": f"工具执行结果：{tool_result}"
+            })
+
+            second_response = client.chat.completions.create(
+                model="qwen-max",
+                messages=messages
+            )
+
+            ai_message = (
+                second_response
+                .choices[0]
+                .message
+                .content
+            )
+
+        else:
+
+            ai_message = llm_output
 
         # =========================
         # 6. 保存用户消息
