@@ -9,6 +9,7 @@ import Register from "../views/Register.vue";
 import Chat from "../views/Chat.vue";
 import Agents from "../views/Agents.vue";
 import AgentStudio from "../views/AgentStudio.vue";
+import WorkflowStudio from "../views/WorkflowStudio.vue"
 
 const routes = [
 
@@ -49,8 +50,15 @@ const routes = [
     meta: {
       requiresAuth: true
     }
+  },
+  
+  {
+    path: "/workflow",
+    component: WorkflowStudio,
+    meta: {
+      requiresAuth: true
+    }
   }
-
 ];
 
 const router = createRouter({
