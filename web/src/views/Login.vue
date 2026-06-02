@@ -1,29 +1,30 @@
 <template>
   <div class="auth-container">
-    <h2>登录</h2>
+    <div class="auth-card card">
+      <h2>欢迎回来</h2>
+      <p class="subtitle">登录到你的智能体平台</p>
 
-    <input
-      v-model="email"
-      placeholder="邮箱"
-      type="email"
-    />
+      <input
+        v-model="email"
+        placeholder="电子邮箱"
+        type="email"
+      />
 
-    <input
-      v-model="password"
-      placeholder="密码"
-      type="password"
-    />
+      <input
+        v-model="password"
+        placeholder="密码"
+        type="password"
+      />
 
-    <button @click="loginUser">
-      登录
-    </button>
+      <button @click="loginUser" class="auth-btn">登录</button>
 
-    <p class="message">{{ message }}</p>
+      <p v-if="message" class="message">{{ message }}</p>
 
-    <p>
-      没有账号？
-      <router-link to="/register">去注册</router-link>
-    </p>
+      <p class="switch-link">
+        没有账号？
+        <router-link to="/register">立即注册</router-link>
+      </p>
+    </div>
   </div>
 </template>
 
@@ -49,17 +50,13 @@ export default defineComponent({
       try {
         const res = await axios.post("http://127.0.0.1:8000/users/login", {
           email: email.value,
-          password: password.value
+          password: password.value,
         });
 
-        // 保存 JWT token
         localStorage.setItem("token", res.data.access_token);
         localStorage.setItem("email", email.value);
 
-        // 【修改点】跳转到智能体列表页，而不是聊天页
-        // 假设你在 router 中给 Agents 配置的路径是 /agents
         router.push("/agents/studio");
-
       } catch (err: any) {
         if (err.response) {
           message.value = err.response.data.detail || "登录失败";
@@ -73,34 +70,66 @@ export default defineComponent({
       email,
       password,
       message,
-      loginUser
+      loginUser,
     };
-  }
+  },
 });
 </script>
 
 <style scoped>
 .auth-container {
-  max-width: 400px;
-  margin: 50px auto;
+  min-height: 80vh;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+}
+
+h2 {
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: var(--text);
+  margin-bottom: 24px;
+  font-size: 14px;
 }
 
 input {
-  margin-bottom: 10px;
-  padding: 8px;
-  font-size: 16px;
+  width: 100%;
+  margin-bottom: 16px;
 }
 
-button {
-  padding: 10px;
+.auth-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
   font-size: 16px;
-  cursor: pointer;
 }
 
 .message {
-  color: red;
-  margin-top: 10px;
+  margin-top: 16px;
+  color: #e5484d;
+  font-size: 14px;
+}
+
+.switch-link {
+  margin-top: 24px;
+  font-size: 14px;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+a:hover {
+  text-decoration: underline;
 }
 </style>

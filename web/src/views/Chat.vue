@@ -1,19 +1,36 @@
 <template>
   <div class="chat-container">
-    <h2>Agent 聊天</h2>
+    <div class="chat-header">
+      <h2>智能体聊天</h2>
+      <router-link to="/agents/studio" class="back-link">← 返回工作室</router-link>
+    </div>
 
     <div class="chat-box" ref="chatBox">
-      <div v-for="(msg, idx) in messages" :key="idx" :class="msg.role.toLowerCase()">
-        <strong>{{ msg.role }}:</strong> {{ msg.content }}
+      <div
+        v-for="(msg, idx) in messages"
+        :key="idx"
+        :class="['message', msg.role === 'user' ? 'user' : 'ai']"
+      >
+        <div class="message-avatar">
+          {{ msg.role === 'user' ? '👤' : '🤖' }}
+        </div>
+        <div class="message-content">
+          <div class="message-text">{{ msg.content }}</div>
+        </div>
+      </div>
+      <div v-if="messages.length === 0" class="empty-chat">
+        <p>发送一条消息开始对话 ✨</p>
       </div>
     </div>
 
-    <input
-      v-model="inputMessage"
-      @keyup.enter="sendMessage"
-      placeholder="输入消息..."
-    />
-    <button @click="sendMessage">发送</button>
+    <div class="chat-input-area">
+      <input
+        v-model="inputMessage"
+        @keyup.enter="sendMessage"
+        placeholder="输入消息..."
+      />
+      <button @click="sendMessage">发送</button>
+    </div>
   </div>
 </template>
 
@@ -64,7 +81,7 @@ export default defineComponent({
       if (!inputMessage.value.trim()) return;
 
       const agentId = route.params.agentId;
-      const userMsg: Message = { role: "你", content: inputMessage.value };
+      const userMsg: Message = { role: "user", content: inputMessage.value };
       messages.value.push(userMsg);
       scrollToBottom();
 
@@ -74,12 +91,11 @@ export default defineComponent({
           { message: inputMessage.value },
           { headers: authHeader() }
         );
-
         const aiMsg: Message = { role: "AI", content: res.data.response };
         messages.value.push(aiMsg);
         scrollToBottom();
       } catch (err: any) {
-        messages.value.push({ role: "AI", content: "发送失败" });
+        messages.value.push({ role: "AI", content: "发送失败，请重试" });
         scrollToBottom();
       }
 
@@ -102,39 +118,113 @@ export default defineComponent({
 
 <style scoped>
 .chat-container {
-  max-width: 600px;
-  margin: 50px auto;
+  max-width: 800px;
+  margin: 0 auto;
+  height: 85vh;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
 }
 
 .chat-box {
-  border: 1px solid #ccc;
-  min-height: 300px;
-  padding: 10px;
-  margin-bottom: 10px;
+  flex: 1;
   overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.chat-box .你 {
-  color: blue;
-  margin-bottom: 5px;
+.message {
+  display: flex;
+  gap: 12px;
+  max-width: 80%;
+  animation: fadeInUp 0.2s ease;
 }
 
-.chat-box .ai {
-  color: green;
-  margin-bottom: 5px;
+.message.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
 }
 
-input {
-  padding: 8px;
-  font-size: 16px;
-  margin-bottom: 10px;
+.message.ai {
+  align-self: flex-start;
 }
 
-button {
-  padding: 10px;
-  font-size: 16px;
-  cursor: pointer;
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--code-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.message-content {
+  background: var(--code-bg);
+  padding: 10px 16px;
+  border-radius: 18px;
+  max-width: 100%;
+}
+
+.user .message-content {
+  background: var(--accent);
+  color: white;
+}
+
+.message-text {
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.empty-chat {
+  text-align: center;
+  padding: 40px;
+  color: var(--text);
+}
+
+.chat-input-area {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.chat-input-area input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

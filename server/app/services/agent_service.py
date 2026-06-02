@@ -173,10 +173,18 @@ def get_agent_service(agent_id, user_email):
 def delete_agent_service(agent_id: int, user_email: str):
     db = SessionLocal()
     try:
+        # 查询用户
+        user = db.query(User).filter(User.email == user_email).first()
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="用户不存在"
+            )
+
         # 查询Agent
         agent = db.query(Agent).filter(
             Agent.id == agent_id,
-            Agent.user.has(email=user_email)
+            Agent.user_id == user.id
         ).first()
 
         if not agent:

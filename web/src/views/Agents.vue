@@ -1,145 +1,81 @@
-
 <template>
   <div class="container">
-
     <h1>我的智能体</h1>
 
-    <!-- 创建Agent -->
-    <div class="create-box">
-
-      <input
-        v-model="name"
-        placeholder="Agent名称"
-      />
-
-      <input
-        v-model="description"
-        placeholder="Agent简介"
-      />
-
-      <textarea
-        v-model="systemPrompt"
-        placeholder="系统Prompt"
-      />
-
-      <button @click="createAgent">
-        创建Agent
-      </button>
-
+    <!-- 创建表单 -->
+    <div class="create-card card">
+      <h3>新建智能体</h3>
+      <input v-model="name" placeholder="名称" />
+      <input v-model="description" placeholder="简介" />
+      <textarea v-model="systemPrompt" placeholder="系统 Prompt"></textarea>
+      <button @click="createAgent">创建 Agent</button>
     </div>
 
-    <!-- Agent列表 -->
-    <div
-      class="agent-card"
-      v-for="agent in agents"
-      :key="agent.id"
-    >
+    <!-- Agent 列表 -->
+    <div v-if="agents.length === 0" class="empty-state">
+      <p>还没有智能体，点击上方按钮创建一个吧 ✨</p>
+    </div>
 
+    <div v-for="agent in agents" :key="agent.id" class="agent-card card">
       <h2>{{ agent.name }}</h2>
-
-      <p>{{ agent.description }}</p>
-
-      <button @click="goChat(agent.id)">
-        进入聊天
-      </button>
-
+      <p>{{ agent.description || "暂无描述" }}</p>
+      <button class="chat-btn" @click="goChat(agent.id)">进入聊天</button>
     </div>
-
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
-import { ref, onMounted } from "vue";
+import { defineComponent, ref, onMounted } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 
 export default defineComponent({
-
   setup() {
-
     const router = useRouter();
-
     const agents = ref([]);
-
     const name = ref("");
-
     const description = ref("");
-
     const systemPrompt = ref("");
 
-    // 获取Agent列表
     const loadAgents = async () => {
-
       try {
-
         const token = localStorage.getItem("token");
-
-        const res = await axios.get(
-          "http://127.0.0.1:8000/agents/my",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-
+        const res = await axios.get("http://127.0.0.1:8000/agents/my", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         agents.value = res.data;
-
       } catch (err) {
-
         alert("获取Agent失败");
-
       }
-
     };
 
-    // 创建Agent
     const createAgent = async () => {
-
       try {
-
         const token = localStorage.getItem("token");
-
         await axios.post(
           "http://127.0.0.1:8000/agents/create",
           {
             name: name.value,
             description: description.value,
-            system_prompt: systemPrompt.value
+            system_prompt: systemPrompt.value,
           },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-
         name.value = "";
         description.value = "";
         systemPrompt.value = "";
-
         loadAgents();
-
       } catch (err) {
-
         alert("创建失败");
-
       }
-
     };
 
-    // 进入聊天
     const goChat = (agentId: number) => {
-
       router.push(`/chat/${agentId}`);
-
     };
 
     onMounted(() => {
-
       loadAgents();
-
     });
 
     return {
@@ -148,44 +84,70 @@ export default defineComponent({
       description,
       systemPrompt,
       createAgent,
-      goChat
+      goChat,
     };
-
-  }
-
+  },
 });
 </script>
 
 <style scoped>
-
 .container {
-  max-width: 900px;
-  margin: 40px auto;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.create-box {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 30px;
+h1 {
+  margin-bottom: 32px;
+}
+
+.create-card {
+  margin-bottom: 40px;
+}
+
+.create-card h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
 }
 
 input,
 textarea {
-  margin-bottom: 10px;
-  padding: 10px;
-  font-size: 16px;
+  width: 100%;
+  margin-bottom: 12px;
 }
 
 button {
-  padding: 10px;
-  cursor: pointer;
+  margin-top: 8px;
 }
 
 .agent-card {
-  border: 1px solid #ccc;
-  padding: 20px;
   margin-bottom: 20px;
+  transition: all 0.2s;
 }
 
-</style>
+.agent-card:hover {
+  transform: translateY(-2px);
+}
 
+.agent-card h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1.4rem;
+}
+
+.agent-card p {
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.chat-btn {
+  background: var(--accent);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  background: var(--code-bg);
+  border-radius: 24px;
+  color: var(--text);
+}
+</style>

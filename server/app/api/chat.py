@@ -73,33 +73,23 @@ def chat(
     "/history/{agent_id}"
 )
 def get_chat_history(
-
     agent_id: int,
-
     authorization: str = Header(...)
-
 ):
-
     try:
-
         token = authorization.split(" ")[1]
-
     except:
-
         raise HTTPException(
             status_code=401,
             detail="Token错误"
         )
-
     payload = decode_token(token)
 
     if not payload:
-
         raise HTTPException(
             status_code=401,
             detail="Token无效"
         )
-
     user_email = payload["sub"]
 
     memory_manager = MemoryManager()
