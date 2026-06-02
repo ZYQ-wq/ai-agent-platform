@@ -226,21 +226,17 @@ export default {
     },
 
     async deleteAgent(id) {
-
-      await axios.delete(
-
-        `http://127.0.0.1:8000/agents/${id}`,
-
-        {
-          headers:
-            this.authHeader()
+        if (!confirm("确认删除这个Agent？")) return;
+        try {
+            await axios.delete(
+            `http://127.0.0.1:8000/agents/${id}`,
+            { headers: this.authHeader() }
+            );
+            this.loadAgents();
+        } catch (e) {
+            console.error("删除Agent失败:", e);
         }
-
-      );
-
-      this.loadAgents();
-
-    },
+        },
 
     goChat(id) {
 
