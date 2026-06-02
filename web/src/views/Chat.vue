@@ -1,132 +1,230 @@
 <template>
   <div class="chat-container">
+    <div class="chat-header">
+      <h2>智能体聊天</h2>
+      <router-link to="/agents/studio" class="back-link">← 返回工作室</router-link>
+    </div>
 
-```
-<h2>Agent聊天</h2>
+    <div class="chat-box" ref="chatBox">
+      <div
+        v-for="(msg, idx) in messages"
+        :key="idx"
+        :class="['message', msg.role === 'user' ? 'user' : 'ai']"
+      >
+        <div class="message-avatar">
+          {{ msg.role === 'user' ? '👤' : '🤖' }}
+        </div>
+        <div class="message-content">
+          <div class="message-text">{{ msg.content }}</div>
+        </div>
+      </div>
+      <div v-if="messages.length === 0" class="empty-chat">
+        <p>发送一条消息开始对话 ✨</p>
+      </div>
+    </div>
 
-<div class="chat-box">
-
-  <div
-    v-for="(msg,index) in messages"
-    :key="index"
-  >
-
-    <strong>
-      {{ msg.role }}
-    </strong>
-
-    ：{{ msg.content }}
-
-  </div>
-
-</div>
-
-<input
-  v-model="inputMessage"
-  @keyup.enter="sendMessage"
-  placeholder="输入消息"
-/>
-
-<button
-  @click="sendMessage"
->
-  发送
-</button>
-```
-
+    <div class="chat-input-area">
+      <input
+        v-model="inputMessage"
+        @keyup.enter="sendMessage"
+        placeholder="输入消息..."
+      />
+      <button @click="sendMessage">发送</button>
+    </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent, ref, onMounted, nextTick } from "vue";
 import axios from "axios";
+import { useRoute } from "vue-router";
 
-export default {
+interface Message {
+  role: string;
+  content: string;
+  tool_call_id?: string;
+}
 
-  data() {
+export default defineComponent({
+  setup() {
+    const route = useRoute();
+    const messages = ref<Message[]>([]);
+    const inputMessage = ref("");
+    const chatBox = ref<HTMLDivElement | null>(null);
 
-    return {
+    const authHeader = () => ({
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    });
 
-      messages: [],
-
-      inputMessage: ""
-
+    const scrollToBottom = async () => {
+      await nextTick();
+      if (chatBox.value) {
+        chatBox.value.scrollTop = chatBox.value.scrollHeight;
+      }
     };
 
-  },
-
-  methods: {
-
-    async sendMessage() {
-
-      if (!this.inputMessage.trim()) {
-        return;
+    const loadHistory = async () => {
+      const agentId = route.params.agentId;
+      try {
+        const res = await axios.get(
+          `http://127.0.0.1:8000/chat/history/${agentId}`,
+          { headers: authHeader() }
+        );
+        messages.value = res.data;
+        scrollToBottom();
+      } catch (err) {
+        console.error("加载聊天历史失败", err);
       }
+    };
 
-      const token =
-        localStorage.getItem("token");
+    const sendMessage = async () => {
+      if (!inputMessage.value.trim()) return;
 
-      const agentId =
-        this.$route.params.agentId;
-
-      this.messages.push({
-
-        role: "你",
-
-        content:
-          this.inputMessage
-
-      });
+      const agentId = route.params.agentId;
+      const userMsg: Message = { role: "user", content: inputMessage.value };
+      messages.value.push(userMsg);
+      scrollToBottom();
 
       try {
-
-        const res =
-          await axios.post(
-
-            `http://127.0.0.1:8000/chat/${agentId}`,
-
-            {
-              message:
-                this.inputMessage
-            },
-
-            {
-              headers: {
-
-                Authorization:
-                  `Bearer ${token}`
-
-              }
-            }
-
-          );
-
-        this.messages.push({
-
-          role: "AI",
-
-          content:
-            res.data.response
-
-        });
-
-      } catch {
-
-        this.messages.push({
-
-          role: "AI",
-
-          content:
-            "请求失败"
-
-        });
-
+        const res = await axios.post(
+          `http://127.0.0.1:8000/chat/${agentId}`,
+          { message: inputMessage.value },
+          { headers: authHeader() }
+        );
+        const aiMsg: Message = { role: "AI", content: res.data.response };
+        messages.value.push(aiMsg);
+        scrollToBottom();
+      } catch (err: any) {
+        messages.value.push({ role: "AI", content: "发送失败，请重试" });
+        scrollToBottom();
       }
 
-      this.inputMessage = "";
+      inputMessage.value = "";
+    };
 
-    }
+    onMounted(() => {
+      loadHistory();
+    });
 
-  }
-
-};
+    return {
+      messages,
+      inputMessage,
+      sendMessage,
+      chatBox,
+    };
+  },
+});
 </script>
+
+<style scoped>
+.chat-container {
+  max-width: 800px;
+  margin: 0 auto;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.chat-box {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  display: flex;
+  gap: 12px;
+  max-width: 80%;
+  animation: fadeInUp 0.2s ease;
+}
+
+.message.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message.ai {
+  align-self: flex-start;
+}
+
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--code-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.message-content {
+  background: var(--code-bg);
+  padding: 10px 16px;
+  border-radius: 18px;
+  max-width: 100%;
+}
+
+.user .message-content {
+  background: var(--accent);
+  color: white;
+}
+
+.message-text {
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.empty-chat {
+  text-align: center;
+  padding: 40px;
+  color: var(--text);
+}
+
+.chat-input-area {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.chat-input-area input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

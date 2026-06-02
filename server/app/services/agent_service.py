@@ -3,6 +3,9 @@ from fastapi import HTTPException
 from app.models.agent import Agent
 from app.models.user import User
 
+from app.models.memory import Memory
+from app.models.memory_summary import MemorySummary
+
 from app.core.database import SessionLocal
 
 
@@ -146,24 +149,66 @@ def get_agent_service(agent_id, user_email):
     finally:
         db.close()
 
-def delete_agent_service(agent_id, user_email):
-    """删除Agent"""
+# def delete_agent_service(agent_id, user_email):
+#     """删除Agent"""
+#     db = SessionLocal()
+#     try:
+#         user = db.query(User).filter(User.email == user_email).first()
+#         if not user:
+#             raise HTTPException(404, "用户不存在")
+
+#         agent = db.query(Agent).filter(
+#             Agent.id == agent_id,
+#             Agent.user_id == user.id
+#         ).first()
+
+#         if not agent:
+#             raise HTTPException(404, "Agent不存在")
+
+#         db.delete(agent)
+#         db.commit()
+#         return {"detail": "删除成功"}
+#     finally:
+#         db.close()
+def delete_agent_service(agent_id: int, user_email: str):
     db = SessionLocal()
     try:
+        # 查询用户
         user = db.query(User).filter(User.email == user_email).first()
         if not user:
-            raise HTTPException(404, "用户不存在")
+            raise HTTPException(
+                status_code=404,
+                detail="用户不存在"
+            )
 
+        # 查询Agent
         agent = db.query(Agent).filter(
             Agent.id == agent_id,
             Agent.user_id == user.id
         ).first()
 
         if not agent:
-            raise HTTPException(404, "Agent不存在")
+            raise HTTPException(
+                status_code=404,
+                detail="Agent不存在"
+            )
 
+        # 先删除Memory表中与该Agent相关的记录
+        db.query(Memory).filter(
+            Memory.agent_id == agent.id
+        ).delete(synchronize_session=False)
+
+        # 删除MemorySummary表中与该Agent相关的记录
+        db.query(MemorySummary).filter(
+            MemorySummary.agent_id == agent.id
+        ).delete(synchronize_session=False)
+
+        # 删除Agent本身
         db.delete(agent)
+
         db.commit()
-        return {"detail": "删除成功"}
+
+        return {"message": "删除成功"}
+
     finally:
         db.close()

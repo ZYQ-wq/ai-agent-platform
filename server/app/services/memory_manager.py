@@ -2,6 +2,7 @@
 from typing import List
 from app.models.memory import Memory
 from app.core.database import SessionLocal
+from app.models.user import User
 
 import numpy as np
 
@@ -117,3 +118,47 @@ class MemoryManager:
         """长期记忆摘要占位，后续可用embedding或AI生成"""
         # 暂时直接返回空字符串
         return ""
+    
+    def get_chat_history(
+    self,
+    user_email: str,
+    agent_id: int
+    ):
+
+        user = self.db.query(
+            User
+        ).filter(
+            User.email == user_email
+        ).first()
+
+        if not user:
+
+            return []
+
+        messages = (
+
+            self.db.query(Memory)
+
+            .filter(
+                Memory.user_id == user.id,
+                Memory.agent_id == agent_id
+            )
+
+            .order_by(
+                Memory.created_at.asc()
+            )
+
+            .all()
+
+        )
+
+        return [
+
+            {
+                "role": m.role,
+                "content": m.content
+            }
+
+            for m in messages
+
+        ]
