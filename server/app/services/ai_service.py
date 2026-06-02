@@ -19,7 +19,7 @@ from app.core.database import SessionLocal
 
 # 关于工具调用
 from app.tools.registry import tool_registry
-from app.services.tool_call_service import execute_tool_call
+from app.services.tool_call_service import execute_tool_call,log_tool_call
 
 
 client = OpenAI(
@@ -162,6 +162,14 @@ def chat_with_agent(
             tool_result = execute_tool_call(
                 tool_name,
                 arguments
+            )
+
+            log_tool_call(
+                user.id,
+                agent.id,
+                tool_name,
+                arguments,
+                tool_result
             )
         
             messages.append(
