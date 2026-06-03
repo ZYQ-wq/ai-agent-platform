@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.workflow import Workflow
 from app.models.workflow_node import WorkflowNode
 from app.models.workflow_edge import WorkflowEdge
+from app.runtime.workflow_engine import WorkflowEngine
 
 
 def save_workflow_service(
@@ -233,3 +234,25 @@ def delete_workflow_service(
     finally:
 
         db.close()
+
+def run_workflow_service(
+        workflow_id: int, 
+        user_email: str, 
+        inputs: dict
+):
+    workflow = get_workflow_detail_service(workflow_id, user_email)
+
+    nodes = workflow['nodes']
+    edges = workflow['edges']
+
+    from app.runtime.workflow_engine import WorkflowEngine
+
+    engine = WorkflowEngine(nodes=nodes, edges=edges, inputs=inputs)
+    result = engine.run()  # 返回 trace + context
+
+    return {
+        "status": "success",
+        "workflow_id": workflow_id,
+        "workflow_name": workflow['name'],
+        "result": result
+    }

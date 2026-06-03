@@ -86,3 +86,11 @@ class WorkflowDetailResponse(BaseModel):
     class Config:
 
         from_attributes = True
+
+# =========================
+# 执行工作流请求
+# =========================
+
+class RunWorkflowRequest(BaseModel):
+
+    inputs: Dict[str, Any] = {}
