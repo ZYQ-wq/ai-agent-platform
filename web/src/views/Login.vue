@@ -56,7 +56,7 @@ export default defineComponent({
         localStorage.setItem("token", res.data.access_token);
         localStorage.setItem("email", email.value);
 
-        router.push("/agents/studio");
+        router.push("/plaza");
       } catch (err: any) {
         if (err.response) {
           message.value = err.response.data.detail || "登录失败";

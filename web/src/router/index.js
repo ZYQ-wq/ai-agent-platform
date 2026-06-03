@@ -10,12 +10,22 @@ import Chat from "../views/Chat.vue";
 import Agents from "../views/Agents.vue";
 import AgentStudio from "../views/AgentStudio.vue";
 import WorkflowStudio from "../views/WorkflowStudio.vue"
+import Plaza from "../views/Plaza.vue"
+import WorkflowManagement from "../views/WorkflowManagement.vue"
 
 const routes = [
 
   {
     path: "/",
-    redirect: "/agents"
+    redirect: "/plaza"
+  },
+
+  {
+    path: "/plaza",
+    component: Plaza,
+    meta: {
+      requiresAuth: true
+    }
   },
 
   {
@@ -55,6 +65,14 @@ const routes = [
   {
     path: "/workflow",
     component: WorkflowStudio,
+    meta: {
+      requiresAuth: true
+    }
+  },
+
+  {
+    path: "/workflow-management",
+    component: WorkflowManagement,
     meta: {
       requiresAuth: true
     }
