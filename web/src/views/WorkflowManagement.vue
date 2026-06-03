@@ -51,7 +51,7 @@ export default defineComponent({
       loading.value = true
       try {
         const token = localStorage.getItem('token')
-        const res = await axios.get('http://127.0.0.1:8000/workflows/my', {
+        const res = await axios.get('http://127.0.0.1:8000/workflow/my', {
           headers: { Authorization: `Bearer ${token}` }
         })
 
@@ -97,7 +97,7 @@ export default defineComponent({
 
       try {
         const token = localStorage.getItem('token')
-        await axios.delete(`http://127.0.0.1:8000/workflows/${id}`, {
+        await axios.delete(`http://127.0.0.1:8000/workflow/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         loadWorkflows()
