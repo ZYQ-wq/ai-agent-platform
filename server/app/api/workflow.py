@@ -42,7 +42,12 @@ def save_workflow(
 
     user_email = payload["sub"]
 
-    return save_workflow_service(user_email, req)
+    # 从查询参数获取工作流ID（用于更新）
+    workflow_id = None
+    if hasattr(req, 'workflow_id') and req.workflow_id:
+        workflow_id = req.workflow_id
+
+    return save_workflow_service(user_email, req, workflow_id)
 
 
 # 获取我的工作流列表

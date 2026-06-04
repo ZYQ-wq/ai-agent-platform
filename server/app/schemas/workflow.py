@@ -52,6 +52,9 @@ class SaveWorkflowRequest(BaseModel):
         WorkflowEdgeSchema
     ]
 
+    # 可选字段，用于更新现有工作流
+    workflow_id: Optional[int] = None
+
 
 # =========================
 # 工作流响应

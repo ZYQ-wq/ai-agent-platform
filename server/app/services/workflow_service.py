@@ -15,7 +15,8 @@ from app.runtime.workflow_engine import WorkflowEngine
 
 def save_workflow_service(
     user_email: str,
-    req
+    req,
+    workflow_id: int = None
 ):
 
     db = SessionLocal()
@@ -33,13 +34,51 @@ def save_workflow_service(
                 detail="用户不存在"
             )
 
-        workflow = Workflow(
-            user_id=user.id,
-            name=req.name,
-            description=req.description
-        )
+        # 如果有工作流ID，则是更新现有工作流
+        if workflow_id:
+            workflow = db.query(
+                Workflow
+            ).filter(
+                Workflow.id == workflow_id,
+                Workflow.user_id == user.id
+            ).first()
 
-        db.add(workflow)
+            if not workflow:
+                raise HTTPException(
+                    status_code=404,
+                    detail="工作流不存在"
+                )
+
+            # # 更新工作流基本信息
+            # workflow.name = req.name
+            # workflow.description = req.description
+
+            # 删除现有节点和边
+            db.query(
+                WorkflowNode
+            ).filter(
+                WorkflowNode.workflow_id == workflow_id
+            ).delete(
+                synchronize_session=False
+            )
+
+            db.query(
+                WorkflowEdge
+            ).filter(
+                WorkflowEdge.workflow_id == workflow_id
+            ).delete(
+                synchronize_session=False
+            )
+
+        else:
+            # 创建新工作流
+            workflow = Workflow(
+                user_id=user.id,
+                name=req.name,
+                description=req.description
+            )
+            db.add(workflow)
+
         db.commit()
         db.refresh(workflow)
 

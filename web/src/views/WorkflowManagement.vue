@@ -117,7 +117,7 @@ export default defineComponent({
         newWorkflow.value = { name: '', description: '' }
 
         // 跳转到工作流编辑页面
-        router.push('/workflow')
+        router.push(`/workflow?id=${workflowId}`)
       } catch (err) {
         console.error(err)
         alert('创建失败')

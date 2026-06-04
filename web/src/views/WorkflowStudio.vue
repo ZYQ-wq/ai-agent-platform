@@ -49,7 +49,8 @@
 
 <script setup lang="ts">
 
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
+import { useRoute } from "vue-router"
 
 import axios from "axios"
 
@@ -80,6 +81,9 @@ import "@vue-flow/core/dist/theme-default.css"
 
 import type { Node, Edge } from "@vue-flow/core"
 
+const route = useRoute()
+const workflowId = ref(route.query.id ? parseInt(route.query.id as string) : null)
+
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
 
@@ -93,6 +97,58 @@ const onConnect = (params: any) => {
 }
 
 let currentId = 1
+
+// 加载工作流数据
+const loadWorkflow = async () => {
+  if (!workflowId.value) return
+
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.get(`http://127.0.0.1:8000/workflow/${workflowId.value}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    const workflow = res.data
+    nodes.value = []
+    edges.value = []
+    currentId = 1
+
+    // 加载节点
+    if (workflow.nodes) {
+      workflow.nodes.forEach((node: any) => {
+        nodes.value.push({
+          id: node.node_id,
+          type: "workflow",
+          position: {
+            x: 100 + (currentId * 100),
+            y: 200
+          },
+          data: {
+            label: node.name,
+            type: node.node_type
+          }
+        })
+        currentId++
+      })
+    }
+
+    // 加载边
+    if (workflow.edges) {
+      workflow.edges.forEach((edge: any) => {
+        edges.value.push({
+          source: edge.source_node,
+          target: edge.target_node
+        })
+      })
+    }
+
+    // 更新工作流名称
+    // 这里可以添加一个编辑工作流名称的功能
+  } catch (error) {
+    console.error('加载工作流失败:', error)
+    alert('加载工作流失败')
+  }
+}
 
 const nodeTypes = {
   workflow: WorkflowNode
@@ -210,12 +266,18 @@ const saveWorkflow = async () => {
 
       target_node: edge.target
 
-    }))
+    })),
 
+    // 如果有工作流ID，则传递给后端
+    workflow_id: workflowId.value || null
   }
 
+  const url = workflowId.value
+    ? `http://127.0.0.1:8000/workflow/save`
+    : "http://127.0.0.1:8000/workflow/save"
+
   await axios.post(
-    "http://127.0.0.1:8000/workflow/save",
+    url,
     workflowData,
     {
       headers: {
@@ -227,9 +289,13 @@ const saveWorkflow = async () => {
   )
 
   alert("保存成功")
-
 }
 
+
+// 如果有工作流ID，加载工作流数据
+if (workflowId.value) {
+  loadWorkflow()
+}
   
 
 </script>
