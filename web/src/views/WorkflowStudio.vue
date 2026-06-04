@@ -4,12 +4,20 @@
     <!-- 顶部工具栏 -->
     <div class="toolbar">
 
+      <button @click="addStart">
+        + Start
+      </button>
+
       <button @click="addLLM">
         + LLM
       </button>
 
       <button @click="addTool">
         + Tool
+      </button>
+
+      <button @click="addEnd">
+        + End
       </button>
 
       <button @click="saveWorkflow">
@@ -128,6 +136,50 @@ function addTool() {
     data: {
       label: "搜索工具",
       type: "tool"
+    }
+
+  })
+
+}
+
+function addStart() {
+
+  nodes.value.push({
+
+    id: String(currentId++),
+
+    type: "workflow",
+
+    position: {
+      x: 100,
+      y: 200
+    },
+
+    data: {
+      label: "开始节点",
+      type: "start"
+    }
+
+  })
+
+}
+
+function addEnd() {
+
+  nodes.value.push({
+
+    id: String(currentId++),
+
+    type: "workflow",
+
+    position: {
+      x: 600,
+      y: 200
+    },
+
+    data: {
+      label: "结束节点",
+      type: "output"
     }
 
   })

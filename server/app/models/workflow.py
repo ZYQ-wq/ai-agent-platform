@@ -30,6 +30,11 @@ class Workflow(Base):
         nullable=False
     )
 
+    description = Column(
+        String(1000),
+        nullable=True
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()

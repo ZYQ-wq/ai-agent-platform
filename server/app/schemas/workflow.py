@@ -3,6 +3,7 @@ from typing import List
 from typing import Optional
 from typing import Dict
 from typing import Any
+from datetime import datetime
 
 
 # =========================
@@ -41,6 +42,8 @@ class SaveWorkflowRequest(BaseModel):
 
     name: str
 
+    description: str = ""
+
     nodes: List[
         WorkflowNodeSchema
     ]
@@ -59,6 +62,10 @@ class WorkflowResponse(BaseModel):
     id: int
 
     name: str
+
+    description: str = "暂无任何描述"
+
+    created_at: datetime
 
     class Config:
 

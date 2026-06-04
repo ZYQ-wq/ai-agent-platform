@@ -35,7 +35,8 @@ def save_workflow_service(
 
         workflow = Workflow(
             user_id=user.id,
-            name=req.name
+            name=req.name,
+            description=req.description
         )
 
         db.add(workflow)
@@ -155,6 +156,7 @@ def get_workflow_detail_service(
         return {
             "id": workflow.id,
             "name": workflow.name,
+            "description": workflow.description,
             "nodes": [
                 {
                     "node_id": n.node_id,

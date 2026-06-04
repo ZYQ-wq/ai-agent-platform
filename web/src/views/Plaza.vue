@@ -70,7 +70,7 @@ export default defineComponent({
 
           // 加载工作流数量
           try {
-            const workflowsRes = await axios.get('http://127.0.0.1:8000/workflows/my', {
+            const workflowsRes = await axios.get('http://127.0.0.1:8000/workflow/my', {
               headers: { Authorization: `Bearer ${token}` }
             })
             workflowCount.value = workflowsRes.data?.length || 0

@@ -1,5 +1,23 @@
+<script setup lang="ts">
+import { Handle, Position } from "@vue-flow/core"
+
+// 定义节点数据的类型
+interface NodeData {
+  label: string
+  type: string
+  // 可以根据需要添加更多属性
+}
+
+defineProps<{
+  data: NodeData
+}>()
+</script>
+
 <template>
-  <div class="workflow-node">
+  <div
+    class="workflow-node"
+    :class="data.type"
+  >
 
     <Handle
       type="target"
@@ -25,14 +43,6 @@
 
   </div>
 </template>
-
-<script setup lang="ts">
-import { Handle, Position } from "@vue-flow/core"
-
-defineProps({
-  data: Object
-})
-</script>
 
 <style scoped>
 
@@ -66,5 +76,21 @@ defineProps({
 
   font-size: 13px;
 
+}
+
+.start {
+  border: 2px solid #67c23a;
+}
+
+.llm {
+  border: 2px solid #409eff;
+}
+
+.tool {
+  border: 2px solid #e6a23c;
+}
+
+.output {
+  border: 2px solid #f56c6c;
 }
 </style>

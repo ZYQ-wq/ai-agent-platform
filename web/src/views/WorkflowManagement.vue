@@ -32,6 +32,28 @@
     <div class="back-to-plaza">
       <button class="back-btn" @click="goToPlaza">← 返回广场</button>
     </div>
+
+    <!-- 新建工作流弹窗 -->
+    <div v-if="showCreateModal" class="modal-backdrop">
+      <div class="modal">
+        <h3>新建工作流</h3>
+
+        <div class="form-item">
+          <label>工作流名称</label>
+          <input v-model="newWorkflow.name" placeholder="请输入工作流名称" />
+        </div>
+
+        <div class="form-item">
+          <label>工作流描述</label>
+          <textarea v-model="newWorkflow.description" placeholder="请输入工作流描述"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button @click="createWorkflow">保存</button>
+          <button @click="cancelCreate">取消</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -40,11 +62,67 @@ import { defineComponent, ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 
+// 定义工作流数据类型
+interface Workflow {
+  id: number
+  name: string
+  description?: string
+  created_at: string
+  nodes?: any[]  // 根据实际节点结构定义
+  node_count?: number
+}
+
 export default defineComponent({
   setup() {
     const router = useRouter()
-    const workflows = ref([])
+    const workflows = ref<Workflow[]>([])
     const loading = ref(false)
+
+    const showCreateModal = ref(false)
+    const newWorkflow = ref({ name: '', description: '' })
+
+    // 打开新建工作流弹窗
+    const goToCreateWorkflow = () => {
+      showCreateModal.value = true
+    }
+
+    // 取消新建
+    const cancelCreate = () => {
+      showCreateModal.value = false
+      newWorkflow.value = { name: '', description: '' }
+    }
+
+    // 创建工作流
+    const createWorkflow = async () => {
+      if (!newWorkflow.value.name) {
+        alert('请填写工作流名称')
+        return
+      }
+
+      try {
+        const token = localStorage.getItem('token')
+        const res = await axios.post('http://127.0.0.1:8000/workflow/save', {
+          name: newWorkflow.value.name,
+          description: newWorkflow.value.description,
+          nodes: [],
+          edges: []
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        const workflowId = res.data.workflow_id
+
+        // 关闭弹窗
+        showCreateModal.value = false
+        newWorkflow.value = { name: '', description: '' }
+
+        // 跳转到工作流编辑页面
+        router.push('/workflow')
+      } catch (err) {
+        console.error(err)
+        alert('创建失败')
+      }
+    }
 
     // 加载工作流列表
     const loadWorkflows = async () => {
@@ -55,31 +133,20 @@ export default defineComponent({
           headers: { Authorization: `Bearer ${token}` }
         })
 
-        // 为每个工作流添加节点数量
-        workflows.value = res.data?.map(wf => ({
+        workflows.value = res.data?.map((wf: { nodes: string | any[] }) => ({
           ...wf,
           node_count: wf.nodes ? wf.nodes.length : 0
         })) || []
       } catch (error) {
         console.error('加载工作流失败:', error)
-        // 如果API未实现，使用模拟数据
-        console.log('工作流API暂未实现，使用模拟数据')
-        workflows.value = [
-          {
-            id: 1,
-            name: '示例工作流',
-            description: '这是一个示例工作流',
-            created_at: new Date().toISOString(),
-            node_count: 3
-          }
-        ]
+        workflows.value = []
       } finally {
         loading.value = false
       }
     }
 
     // 格式化日期
-    const formatDate = (dateString) => {
+    const formatDate = (dateString: string | null | undefined) => {
       if (!dateString) return '未知'
       const date = new Date(dateString)
       return date.toLocaleString('zh-CN', {
@@ -92,7 +159,7 @@ export default defineComponent({
     }
 
     // 删除工作流
-    const deleteWorkflow = async (id) => {
+    const deleteWorkflow = async (id: any) => {
       if (!confirm('确认删除这个工作流？')) return
 
       try {
@@ -108,21 +175,16 @@ export default defineComponent({
     }
 
     // 运行工作流
-    const runWorkflow = (workflow) => {
-      // 这里可以添加运行工作流的逻辑
+    const runWorkflow = (workflow: { name: any }) => {
       alert(`运行工作流: ${workflow.name}`)
     }
 
     // 编辑工作流
-    const editWorkflow = (workflow) => {
+    const editWorkflow = (workflow: { id: any }) => {
       router.push(`/workflow?id=${workflow.id}`)
     }
 
-    // 导航方法
-    const goToCreateWorkflow = () => {
-      router.push('/workflow')
-    }
-
+    // 返回广场
     const goToPlaza = () => {
       router.push('/')
     }
@@ -139,7 +201,11 @@ export default defineComponent({
       runWorkflow,
       editWorkflow,
       goToCreateWorkflow,
-      goToPlaza
+      goToPlaza,
+      showCreateModal,
+      newWorkflow,
+      cancelCreate,
+      createWorkflow
     }
   }
 })
@@ -312,33 +378,43 @@ export default defineComponent({
   background: #4b5563;
 }
 
-@media (max-width: 768px) {
-  .container {
-    padding: 16px;
-  }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
 
-  .header {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.modal {
+  width: 400px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
 
-  .workflow-card {
-    flex-direction: column;
-    gap: 20px;
-  }
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
 
-  .workflow-info {
-    width: 100%;
-  }
+.modal-actions button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
 
-  .workflow-actions {
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
+.modal-actions button:first-child {
+  background: #409eff;
+  color: white;
+}
 
-  .workflow-meta {
-    justify-content: flex-start;
-  }
+.modal-actions button:last-child {
+  background: #f0f0f0;
 }
 </style>
