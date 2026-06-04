@@ -90,8 +90,19 @@ def save_workflow_service(
                 node_id=node.node_id,
                 node_type=node.node_type,
                 name=node.name,
+
                 config=json.dumps(
                     node.config,
+                    ensure_ascii=False
+                ),
+
+                inputs=json.dumps(
+                    node.inputs,
+                    ensure_ascii=False
+                ),
+
+                outputs=json.dumps(
+                    node.outputs,
                     ensure_ascii=False
                 )
             )
@@ -203,6 +214,12 @@ def get_workflow_detail_service(
                     "name": n.name,
                     "config": json.loads(
                         n.config or "{}"
+                    ),
+                    "inputs": json.loads(
+                        n.inputs or "[]"
+                    ),
+                    "outputs": json.loads(
+                        n.outputs or "[]"
                     )
                 }
                 for n in nodes

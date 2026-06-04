@@ -38,6 +38,10 @@ class WorkflowNode(Base):
         nullable=False
     )
 
+    inputs = Column(Text)
+
+    outputs = Column(Text)
+
     config = Column(
         Text,
         nullable=True

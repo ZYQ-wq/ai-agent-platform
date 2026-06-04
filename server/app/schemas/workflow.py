@@ -22,6 +22,10 @@ class WorkflowNodeSchema(BaseModel):
         Dict[str, Any]
     ] = None
 
+    inputs: list = []
+
+    outputs: list = []
+
 
 # =========================
 # Edge

@@ -125,7 +125,14 @@ const loadWorkflow = async () => {
           },
           data: {
             label: node.name,
-            type: node.node_type
+
+            type: node.node_type,
+
+            inputs: node.inputs || [],
+
+            outputs: node.outputs || [],
+
+            config: node.config || {}
           }
         })
         currentId++
@@ -156,6 +163,8 @@ const nodeTypes = {
 
 function addLLM() {
 
+  console.log(node)
+
   nodes.value.push({
 
     id: String(currentId++),
@@ -169,10 +178,28 @@ function addLLM() {
 
     data: {
       label: "Qwen",
-      type: "llm"
+      type: "llm",
+
+      inputs: [
+        {
+          name: "prompt",
+          type: "string"
+        }
+      ],
+
+      outputs: [
+        {
+          name: "answer",
+          type: "string"
+        }
+      ],
+
+      model: "qwen-max"
     }
 
   })
+
+  console.log(nodes.value)
 
 }
 
@@ -191,7 +218,7 @@ function addTool() {
 
     data: {
       label: "搜索工具",
-      type: "tool"
+      type: "tool",
     }
 
   })
@@ -213,7 +240,14 @@ function addStart() {
 
     data: {
       label: "开始节点",
-      type: "start"
+      type: "start",
+
+      inputs: [
+        {
+          name: "query",
+          type: "string"
+        }
+      ]
     }
 
   })
@@ -235,7 +269,14 @@ function addEnd() {
 
     data: {
       label: "结束节点",
-      type: "output"
+      type: "output",
+
+      outputs: [
+        {
+          name: "text",
+          type: "string"
+        }
+      ]
     }
 
   })
@@ -256,7 +297,18 @@ const saveWorkflow = async () => {
 
       name: node.data.label,
 
-      config: {}
+      inputs:
+        node.data.inputs || [],
+
+      outputs:
+        node.data.outputs || [],
+
+      config: {
+
+        model:
+          node.data.model || ""
+
+      }
 
     })),
 
