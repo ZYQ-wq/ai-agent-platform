@@ -38,7 +38,7 @@ class LLMNode(BaseNode):
             prompt = self.context.get("__inputs__", {}).get("prompt", "")
 
         result = call_qwen(prompt)
-        return result
+        return {"answer":result}
 
 
 # =========================
@@ -58,33 +58,20 @@ class ToolNode(BaseNode):
 # Output Node
 # =========================
 
+# =========================
+# Output Node
+# =========================
+
 class OutputNode(BaseNode):
+
     def run(self):
-        # 输出节点通常只需要输出上游节点的结果
-        # 可以从 resolved_inputs 中获得已经聚合的输入（如果有多个输入）
-        # 或者从 context 中获取前一个节点的输出（单链情况）
-        prev_node_id = self.node_data.get("prev_node_id")
-        if prev_node_id is None:
-            # 自动查找前一个节点：获取上下文中最近添加的节点输出（非 __inputs__）
-            all_keys = [k for k in self.context.all().keys() if k != "__inputs__"]
-            # 简单的假设：节点 ID 为数字字符串，按数字排序取最大
-            numeric_keys = [k for k in all_keys if k.isdigit()]
-            if numeric_keys:
-                numeric_keys.sort(key=int)
-                prev_node_id = numeric_keys[-1]
-            elif all_keys:
-                prev_node_id = all_keys[-1]
-            else:
-                prev_node_id = None
 
-        if prev_node_id:
-            output = self.context.get(prev_node_id)
-        else:
-            output = self.resolved_inputs  # 如果没有任何上游，就直接输出解析后的输入
+        print(
+            f"Output Node {self.node_data['node_id']} output:",
+            self.resolved_inputs
+        )
 
-        print(f"Output Node {self.node_data['node_id']} value: {output}")
-        return output
-
+        return self.resolved_inputs
 
 # =========================
 # Registry

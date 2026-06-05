@@ -7,6 +7,7 @@
       <button @click="addTool">+ Tool</button>
       <button @click="addEnd">+ End</button>
       <button @click="handleManualSave">保存工作流</button>
+      <button @click="openRunDialog">试运行</button>
     </div>
 
     <!-- 工作流画布 -->
@@ -24,6 +25,49 @@
       <Controls />
       <MiniMap />
     </VueFlow>
+
+    <!-- ========================= -->
+    <!-- 运行结果 -->
+    <!-- ========================= -->
+
+    <div
+      v-if="runTrace.length"
+      class="run-panel"
+    >
+
+      <h3>
+        执行过程
+      </h3>
+
+      <div
+        v-for="item in runTrace"
+        :key="item.node_id"
+        class="trace-item"
+      >
+
+        <div class="trace-header">
+
+          {{ item.node_name }}
+
+          ({{ item.node_type }})
+
+        </div>
+
+        <pre>
+    {{ JSON.stringify(item.output, null, 2) }}
+        </pre>
+
+      </div>
+
+      <h3>
+        最终输出
+      </h3>
+
+      <pre>
+    {{ JSON.stringify(runOutput, null, 2) }}
+      </pre>
+
+    </div>
 
     <!-- 右侧节点配置面板 -->
     <div v-if="selectedNode" class="node-config">
@@ -136,6 +180,54 @@
       </div>
     </div>
   </div>
+
+  <!-- ========================= -->
+  <!-- 试运行弹窗 -->
+  <!-- ========================= -->
+
+  <div
+    v-if="showRunDialog"
+    class="run-dialog-mask"
+  >
+
+    <div class="run-dialog">
+
+      <h3>试运行</h3>
+
+      <div class="form-item">
+
+        <label>
+          {{ startVariableName }}
+        </label>
+
+        <textarea
+          v-model="runInput"
+          rows="6"
+          placeholder="请输入内容"
+        />
+
+      </div>
+
+      <div class="dialog-footer">
+
+        <button
+          @click="showRunDialog = false"
+        >
+          取消
+        </button>
+
+        <button
+          @click="runWorkflow"
+          :disabled="runLoading"
+        >
+          {{ runLoading ? "运行中..." : "试运行" }}
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -160,6 +252,20 @@ const workflowId = ref(route.query.id ? parseInt(route.query.id as string) : nul
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
 const selectedNode = ref<Node | null>(null)
+
+// ====================
+// 试运行
+// ====================
+
+const showRunDialog = ref(false)
+
+const runInput = ref("")
+
+const runLoading = ref(false)
+
+const runTrace = ref<any[]>([])
+
+const runOutput = ref<any>(null)
 
 let currentId = 1
 
@@ -189,6 +295,25 @@ const availableVariables = computed(() => {
   return vars
 })
 
+const startVariableName = computed(() => {
+
+  const startNode = nodes.value.find(
+    (n: any) => n.data.type === "start"
+  )
+
+  if (!startNode) {
+    return "input"
+  }
+
+  const outputs = startNode.data.outputs || []
+
+  if (outputs.length === 0) {
+    return "input"
+  }
+
+  return outputs[0].name
+})
+
 // 事件处理
 const onNodeClick = ({ node }: NodeMouseEvent) => {
   selectedNode.value = node
@@ -211,6 +336,20 @@ function createInputVariable(name: string, type: string) {
     constantValue: "",
     variableRef: ""
   }
+}
+
+function openRunDialog() {
+
+  const startNode = nodes.value.find(
+    (n: any) => n.data.type === "start"
+  )
+
+  if (!startNode) {
+    alert("请先创建开始节点")
+    return
+  }
+
+  showRunDialog.value = true
 }
 
 // 添加节点的方法（确保 inputs 使用新的结构）
@@ -460,6 +599,74 @@ const loadWorkflow = async () => {
 if (workflowId.value) {
   loadWorkflow()
 }
+
+const runWorkflow = async () => {
+
+  if (!workflowId.value) {
+    alert("请先保存工作流")
+    return
+  }
+
+  try {
+
+    runLoading.value = true
+
+    // 先保存最新画布
+    await saveWorkflow(false)
+
+    const res = await axios.post(
+      `http://127.0.0.1:8000/workflow/run/${workflowId.value}`,
+      {
+        inputs: {
+          [startVariableName.value]:
+            runInput.value
+        }
+      },
+      {
+        headers: {
+          Authorization:
+            "Bearer " +
+            localStorage.getItem("token")
+        }
+      }
+    )
+
+    runTrace.value =
+      res.data.result.trace || []
+
+    const context =
+      res.data.result.context || {}
+
+    const endNode = nodes.value.find(
+      (n: any) =>
+        n.data.type === "output"
+    )
+
+    if (endNode) {
+
+      runOutput.value =
+        context[endNode.id]
+
+    } else {
+
+      runOutput.value =
+        context
+    }
+
+    showRunDialog.value = false
+
+  } catch (error) {
+
+    console.error(error)
+
+    alert("工作流运行失败")
+
+  } finally {
+
+    runLoading.value = false
+  }
+}
+
 </script>
 
 <style scoped>
@@ -652,6 +859,73 @@ if (workflowId.value) {
 .remove-var-btn:hover {
   background: #fef0f0;
   color: #f00;
+}
+
+/* ========================= */
+/* 试运行弹窗 */
+/* ========================= */
+
+.run-dialog-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.run-dialog {
+  width: 500px;
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.run-dialog textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ========================= */
+/* 运行结果 */
+/* ========================= */
+
+.run-panel {
+  height: 300px;
+  overflow-y: auto;
+  border-top: 1px solid #ddd;
+  background: #fafafa;
+  padding: 16px;
+}
+
+.trace-item {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+}
+
+.trace-header {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.run-panel pre {
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
 }
 
 @media (max-width: 600px) {
