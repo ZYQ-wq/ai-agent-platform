@@ -84,29 +84,34 @@ def save_workflow_service(
 
         # 保存节点
         for node in req.nodes:
+            # 将 Pydantic 模型转换为字典（可 JSON 序列化）
+            inputs_serializable = []
+            for inp in node.inputs:
+                if hasattr(inp, 'dict'):   # Pydantic v1
+                    inputs_serializable.append(inp.dict())
+                elif hasattr(inp, 'model_dump'):  # Pydantic v2
+                    inputs_serializable.append(inp.model_dump())
+                else:
+                    inputs_serializable.append(inp)  # 已经是 dict
+
+            outputs_serializable = []
+            for out in node.outputs:
+                if hasattr(out, 'dict'):
+                    outputs_serializable.append(out.dict())
+                elif hasattr(out, 'model_dump'):
+                    outputs_serializable.append(out.model_dump())
+                else:
+                    outputs_serializable.append(out)
 
             workflow_node = WorkflowNode(
                 workflow_id=workflow.id,
                 node_id=node.node_id,
                 node_type=node.node_type,
                 name=node.name,
-
-                config=json.dumps(
-                    node.config,
-                    ensure_ascii=False
-                ),
-
-                inputs=json.dumps(
-                    node.inputs,
-                    ensure_ascii=False
-                ),
-
-                outputs=json.dumps(
-                    node.outputs,
-                    ensure_ascii=False
-                )
+                config=json.dumps(node.config or {}, ensure_ascii=False),
+                inputs=json.dumps(inputs_serializable, ensure_ascii=False),
+                outputs=json.dumps(outputs_serializable, ensure_ascii=False),
             )
-
             db.add(workflow_node)
 
         # 保存边
