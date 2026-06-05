@@ -7,7 +7,7 @@
       <button @click="addLLM">+ LLM</button>
       <button @click="addTool">+ Tool</button>
       <button @click="addEnd">+ End</button>
-      <button @click="saveWorkflow">保存工作流</button>
+      <button @click="handleManualSave">保存工作流</button>
     </div>
 
     <!-- 工作流画布 -->
@@ -30,7 +30,7 @@
     <div v-if="selectedNode" class="node-config">
       <div class="config-header">
         <h3>节点配置</h3>
-        <button class="close-btn" @click="selectedNode = null">×</button>
+        <button class="close-btn" @click="handleClosePanel">×</button>
       </div>
 
       <div class="form-item">
@@ -148,6 +148,7 @@ const onNodeClick = ({ node }: NodeMouseEvent) => {
 }
 
 const onPaneClick = () => {
+  // 点击空白区域只关闭面板，不自动保存（避免频繁保存）
   selectedNode.value = null
 }
 
@@ -255,6 +256,55 @@ function removeOutputVariable(index: number) {
   selectedNode.value.data.outputs.splice(index, 1)
 }
 
+// 保存工作流（核心保存逻辑，不自动弹窗，返回是否成功）
+const saveWorkflow = async (showAlert = false) => {
+  try {
+    const workflowData = {
+      name: "测试工作流",
+      nodes: nodes.value.map((node: any) => ({
+        node_id: node.id,
+        node_type: node.data.type,
+        name: node.data.label,
+        inputs: node.data.inputs || [],
+        outputs: node.data.outputs || [],
+        config: { model: node.data.model || "" }
+      })),
+      edges: edges.value.map((edge: any) => ({
+        source_node: edge.source,
+        target_node: edge.target
+      })),
+      workflow_id: workflowId.value || null
+    }
+
+    const url = "http://127.0.0.1:8000/workflow/save"
+    await axios.post(url, workflowData, {
+      headers: { Authorization: "Bearer " + localStorage.getItem("token") }
+    })
+    
+    if (showAlert) {
+      alert("保存成功")
+    }
+    return true
+  } catch (error) {
+    console.error('保存工作流失败:', error)
+    if (showAlert) {
+      alert("保存失败")
+    }
+    return false
+  }
+}
+
+// 手动保存（按钮触发，带提示）
+const handleManualSave = async () => {
+  await saveWorkflow(true)
+}
+
+// 关闭面板前自动保存（静默保存）
+const handleClosePanel = async () => {
+  await saveWorkflow(false)   // 不弹出提示
+  selectedNode.value = null
+}
+
 // 加载工作流
 const loadWorkflow = async () => {
   if (!workflowId.value) return
@@ -298,32 +348,6 @@ const loadWorkflow = async () => {
     console.error('加载工作流失败:', error)
     alert('加载工作流失败')
   }
-}
-
-// 保存工作流
-const saveWorkflow = async () => {
-  const workflowData = {
-    name: "测试工作流",
-    nodes: nodes.value.map((node: any) => ({
-      node_id: node.id,
-      node_type: node.data.type,
-      name: node.data.label,
-      inputs: node.data.inputs || [],
-      outputs: node.data.outputs || [],
-      config: { model: node.data.model || "" }
-    })),
-    edges: edges.value.map((edge: any) => ({
-      source_node: edge.source,
-      target_node: edge.target
-    })),
-    workflow_id: workflowId.value || null
-  }
-
-  const url = "http://127.0.0.1:8000/workflow/save"
-  await axios.post(url, workflowData, {
-    headers: { Authorization: "Bearer " + localStorage.getItem("token") }
-  })
-  alert("保存成功")
 }
 
 // 如果存在工作流ID，加载数据
