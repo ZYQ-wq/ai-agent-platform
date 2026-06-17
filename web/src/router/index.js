@@ -76,7 +76,36 @@ const routes = [
     meta: {
       requiresAuth: true
     }
+  },
+  {
+    path: "/kb1",
+    component: () => import("../views/KnowledgeBase.vue"),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: "/kb",
+    component: () => import("../views/Knowledge.vue"),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: "/kb/:id",
+    component: () => import("../views/KBDetail.vue"),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: "/kb/upload/:id",
+    component: () => import("../views/KBUpload.vue"),
+    meta: {
+      requiresAuth: true
+    }
   }
+
 ];
 
 const router = createRouter({

@@ -7,6 +7,7 @@ from app.api.user import router as user_router
 from app.api.chat import router as chat_router
 from app.api.agent import router as agent_router
 from app.api.workflow import router as workflow_router
+from app.api.knowledge import router as knowledge_router
 
 from app.core.database import Base,engine
 
@@ -47,6 +48,12 @@ app.include_router(
     workflow_router,
     prefix="/workflow",
     tags=["Workflow"]
+)
+
+app.include_router(
+    knowledge_router,
+    prefix="/kb",
+    tags=["Knowledge Base"]
 )
 
 
