@@ -7,6 +7,8 @@ from app.models.knowledge_chunks import KnowledgeChunk
 
 from app.core.file_storage import save_file
 from app.services.document_parser import parse_file
+from sqlalchemy import func
+from app.services.embedding_service import get_embedding
 
 
 # =========================
@@ -68,11 +70,14 @@ def upload_kb_service(file, user_id: str, kb_id: int):
 
         for i, text in enumerate(chunks):
 
+            vector = get_embedding(text)
+
             chunk = KnowledgeChunk(
                 knowledge_id=kb_id,
                 file_id=kb_file.id,
                 content=text,
-                chunk_index=i
+                chunk_index=i,
+                embedding=vector
             )
 
             db.add(chunk)
@@ -133,19 +138,37 @@ def get_kb_service(kb_id: int, user_id: str):
             KnowledgeFile.knowledge_id == kb_id
         ).all()
 
-        chunks = db.query(KnowledgeChunk).filter(
-            KnowledgeChunk.knowledge_id == kb_id
-        ).all()
+        file_list = []
+
+        for file in files:
+
+            # 当前文件对应的Chunk数量
+            chunk_count = db.query(
+                func.count(KnowledgeChunk.id)
+            ).filter(
+                KnowledgeChunk.file_id == file.id
+            ).scalar()
+
+            file_list.append({
+                "id": file.id,
+                "file_name": file.file_name,
+                "file_type": file.file_type,
+                "file_path": file.file_path,
+                "created_at": file.created_at,
+
+                # 后续接入训练任务时再改
+                "pending": 0,
+                "trained": chunk_count,
+                "total": chunk_count
+            })
 
         return {
             "kb": kb,
-            "files": files,
-            "chunks": chunks
+            "files": file_list
         }
 
     finally:
         db.close()
-
 
 # =========================
 # 5️⃣ 更新KB
@@ -205,6 +228,32 @@ def delete_kb_service(kb_id: int, user_id: str):
 
         # 删除 kb
         db.delete(kb)
+
+        db.commit()
+
+        return True
+
+    finally:
+        db.close()
+
+def delete_kb_file_service(file_id: int):
+
+    db = SessionLocal()
+
+    try:
+
+        file = db.query(KnowledgeFile).filter(
+            KnowledgeFile.id == file_id
+        ).first()
+
+        if not file:
+            return False
+
+        db.query(KnowledgeChunk).filter(
+            KnowledgeChunk.file_id == file_id
+        ).delete()
+
+        db.delete(file)
 
         db.commit()
 

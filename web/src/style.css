@@ -113,7 +113,7 @@ h1, h2, h3 {
   color: var(--text-h);
 }
 
-#app {
+/* #app {
   width: 1126px;
   max-width: 100%;
   margin: 0 auto;
@@ -122,6 +122,18 @@ h1, h2, h3 {
   flex-direction: column;
   box-sizing: border-box;
   padding: 20px;
+} */
+ html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  min-height: 100vh;
 }
 
 /* 卡片公用样式 */

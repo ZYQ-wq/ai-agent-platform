@@ -6,11 +6,15 @@ from app.services.kb_service import (
     list_kb_service,
     get_kb_service,
     delete_kb_service,
-    update_kb_service
+    update_kb_service,
+    delete_kb_file_service
 )
 
 from app.core.auth import decode_token
 from app.schemas.knowledge import KnowledgeCreate,KnowledgeUpdate
+
+from app.schemas.search import SearchRequest
+from app.services.search_embedding_service import search_kb_service
 
 router = APIRouter()
 
@@ -112,7 +116,7 @@ def list_kb(authorization: str = Header(...)):
 
 
 # =========================
-# 4️⃣ KB详情（文件 + chunk）
+# 4️⃣ KB详情（文件列表）
 # =========================
 @router.get("/{kb_id}")
 def get_kb(
@@ -122,10 +126,16 @@ def get_kb(
 
     user_id = get_user_id(authorization)
 
-    data = get_kb_service(kb_id, user_id)
+    data = get_kb_service(
+        kb_id,
+        user_id
+    )
 
     if not data:
-        raise HTTPException(status_code=404, detail="知识库不存在")
+        raise HTTPException(
+            status_code=404,
+            detail="知识库不存在"
+        )
 
     return {
         "code": 0,
@@ -134,28 +144,12 @@ def get_kb(
             "kb": {
                 "id": data["kb"].id,
                 "name": data["kb"].name,
-                "description": data["kb"].description
+                "description": data["kb"].description,
+                "created_at": data["kb"].created_at
             },
-            "files": [
-                {
-                    "id": f.id,
-                    "name": f.file_name,
-                    "type": f.file_type,
-                    "path": f.file_path
-                }
-                for f in data["files"]
-            ],
-            "chunks": [
-                {
-                    "id": c.id,
-                    "content": c.content,
-                    "chunk_index": c.chunk_index
-                }
-                for c in data["chunks"]
-            ]
+            "files": data["files"]
         }
     }
-
 
 # =========================
 # 5️⃣ 更新KB
@@ -210,4 +204,48 @@ def delete_kb(
         "code": 0,
         "message": "delete success",
         "data": True
+    }
+
+@router.delete("/file/{file_id}")
+def delete_file(
+    file_id: int,
+    authorization: str = Header(...)
+):
+
+    user_id = get_user_id(authorization)
+
+    ok = delete_kb_file_service(file_id)
+
+    if not ok:
+        raise HTTPException(
+            status_code=404,
+            detail="文件不存在"
+        )
+
+    return {
+        "code": 0,
+        "message": "delete success"
+    }
+
+@router.post("/search/{kb_id}")
+def search_kb(
+    kb_id: int,
+    data: SearchRequest,
+    authorization: str = Header(...)
+):
+
+    user_id = get_user_id(
+        authorization
+    )
+
+    result = search_kb_service(
+        kb_id=kb_id,
+        query=data.query,
+        top_k=data.top_k
+    )
+
+    return {
+        "code": 0,
+        "message": "success",
+        "data": result
     }
