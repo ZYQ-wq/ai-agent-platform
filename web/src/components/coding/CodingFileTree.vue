@@ -1,42 +1,52 @@
 <script setup lang="ts">
-import { useCodingStore } from '@/stores/coding'
 
-const store = useCodingStore()
+const props = defineProps<{
+  files: any[]
+}>()
 
-const selectFile = (file: any) => {
-  store.currentFile = file
+const emit = defineEmits([
+  "select-file"
+])
+
+const handleClick = (
+  file: any
+) => {
+  emit(
+    "select-file",
+    file
+  )
 }
+
 </script>
 
 <template>
+
   <div class="file-tree">
 
     <div
-      v-for="file in store.project?.files || []"
-      :key="file.path"
+      v-for="file in files"
+      :key="file.id"
       class="file-item"
-      @click="selectFile(file)"
+      @click="handleClick(file)"
     >
       {{ file.path }}
     </div>
 
   </div>
+
 </template>
 
 <style scoped>
 .file-tree {
   height: 100%;
-
-  border-right: 1px solid #ebeef5;
 }
 
 .file-item {
-  padding: 10px 12px;
-
+  padding: 8px 12px;
   cursor: pointer;
 }
 
 .file-item:hover {
-  background: #f5f7fa;
+  background: #f3f4f6;
 }
 </style>

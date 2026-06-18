@@ -1,74 +1,66 @@
 <script setup lang="ts">
-import CodingToolbar from '@/components/coding/CodingToolbar.vue'
-import CodingFileTree from '@/components/coding/CodingFileTree.vue'
-import CodingEditor from '@/components/coding/CodingEditor.vue'
-import CodingAssistant from '@/components/coding/CodingAssistant.vue'
-import CodingConsole from '@/components/coding/CodingConsole.vue'
+import { ref } from "vue";
+
+import ProjectSidebar from "@/components/coding/ProjectSidebar.vue";
+import CodingFileTree from "@/components/coding/CodingFileTree.vue";
+import CodingEditor from "@/components/coding/CodingEditor.vue";
+
+import { getProjectFiles } from "@/api/plugin";
+
+const currentProject = ref<any>(null);
+
+const files = ref<any[]>([]);
+
+const currentFile = ref<any>(null);
+
+const selectFile = (
+  file: any
+) => {
+  currentFile.value = file;
+};
+
+const onSelectProject = async (
+  project: any
+) => {
+
+  currentProject.value = project;
+
+  const res = await getProjectFiles(
+    project.id
+  );
+
+  files.value = res;
+
+  currentFile.value = null;
+};
 </script>
 
 <template>
 
-  <div class="coding-page">
+  <div class="coding-layout">
 
-    <CodingToolbar />
+    <ProjectSidebar
+      @select-project="onSelectProject"
+    />
 
-    <div class="workspace">
+    <CodingFileTree
+      :files="files"
+      @select-file="selectFile"
+    />
 
-      <div class="left-panel">
-        <CodingFileTree />
-      </div>
-
-      <div class="center-panel">
-        <CodingEditor />
-      </div>
-
-      <div class="right-panel">
-        <CodingAssistant />
-      </div>
-
-    </div>
-
-    <div class="console-panel">
-      <CodingConsole />
-    </div>
+    <CodingEditor
+      :file="currentFile"
+    />
 
   </div>
 
 </template>
 
 <style scoped>
-.coding-page {
+
+.coding-layout {
   height: 100vh;
-
   display: flex;
-  flex-direction: column;
 }
 
-.workspace {
-  flex: 1;
-
-  display: flex;
-
-  overflow: hidden;
-}
-
-.left-panel {
-  width: 20%;
-}
-
-.center-panel {
-  width: 55%;
-}
-
-.right-panel {
-  width: 25%;
-
-  border-left: 1px solid #ebeef5;
-}
-
-.console-panel {
-  height: 220px;
-
-  border-top: 1px solid #ebeef5;
-}
 </style>
