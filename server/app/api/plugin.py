@@ -12,7 +12,8 @@ from app.schemas.plugin import (
     PluginFileCreate,
     PluginProjectResponse,
     PluginFileResponse,
-    PluginFileUpdate
+    PluginFileUpdate,
+    RunProjectResponse
 )
 
 router = APIRouter(
@@ -77,4 +78,17 @@ def update_file(
         db=db,
         file_id=file_id,
         content=request.content
+    )
+
+@router.post(
+    "/{project_id}/run",
+    response_model=RunProjectResponse
+)
+def run_project(
+    project_id: str,
+    db: Session = Depends(get_db)
+):
+    return PluginService.run_project(
+        db=db,
+        project_id=project_id
     )

@@ -1,4 +1,10 @@
 from uuid import uuid4
+import subprocess
+import tempfile
+import os
+
+
+from app.services.sandbox_service import SandboxService
 
 from sqlalchemy.orm import Session
 
@@ -78,6 +84,53 @@ class PluginService:
             )
             .all()
         )
+
+    @staticmethod
+    def run_project(
+        db: Session,
+        project_id: str
+    ):
+
+        files = (
+            db.query(PluginFile)
+            .filter(
+                PluginFile.project_id == project_id
+            )
+            .all()
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+
+            for file in files:
+
+                file_path = os.path.join(
+                    tmp,
+                    file.path
+                )
+
+                os.makedirs(
+                    os.path.dirname(file_path),
+                    exist_ok=True
+                )
+
+                with open(
+                    file_path,
+                    "w",
+                    encoding="utf-8"
+                ) as f:
+                    f.write(
+                        file.content or ""
+                    )
+
+            result = SandboxService.run_python(
+                tmp
+            )
+
+            return {
+                "success": result["success"],
+                "stdout": result["logs"],
+                "stderr": ""
+            }
 
     @staticmethod
     def get_files(

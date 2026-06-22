@@ -27,3 +27,11 @@ export const updateFile = (
     }
   );
 };
+
+export const runProject = (
+  projectId: string
+) => {
+  return request.post(
+    `/plugins/${projectId}/run`
+  );
+};

@@ -29,3 +29,8 @@ class PluginFileUpdate(BaseModel):
 
 class UpdateFileRequest(BaseModel):
     content: str
+
+class RunProjectResponse(BaseModel):
+    stdout: str = ""
+    stderr: str = ""
+    success: bool
