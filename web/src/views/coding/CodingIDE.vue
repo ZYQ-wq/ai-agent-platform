@@ -11,6 +11,10 @@ import {
   runProject
 } from "@/api/plugin";
 
+import {
+  generateCode
+} from "@/api/codegen";
+
 const currentProject = ref<any>(null);
 
 const files = ref<any[]>([]);
@@ -115,6 +119,68 @@ const handleRun = async () => {
   }
 
 };
+
+const handleGenerate = async () => {
+
+  if (!currentProject.value) {
+
+    alert(
+      "请先选择项目"
+    );
+
+    return;
+  }
+
+  if (!currentFile.value) {
+
+    alert(
+      "请先选择文件"
+    );
+
+    return;
+  }
+
+  const prompt =
+    window.prompt(
+      "请输入需求"
+    );
+
+  if (!prompt) {
+    return;
+  }
+
+  try {
+
+    output.value =
+      "AI正在生成代码...\n";
+
+    const result =
+      await generateCode(
+        currentProject.value.id,
+        prompt
+      );
+
+    currentFile.value.content =
+      result.content;
+
+    await updateFile(
+      currentFile.value.id,
+      result.content
+    );
+
+    output.value =
+      "AI生成成功";
+
+  } catch (error) {
+
+    console.error(error);
+
+    output.value =
+      "AI生成失败";
+
+  }
+
+};
 </script>
 
 <template>
@@ -132,7 +198,7 @@ const handleRun = async () => {
       @select-file="selectFile"
     />
 
-    <!-- 主区域 -->
+    <!-- 主工作区 -->
     <div class="workspace">
 
       <!-- 顶部工具栏 -->
@@ -142,12 +208,23 @@ const handleRun = async () => {
           {{ currentProject?.name }}
         </div>
 
-        <button
-          class="run-btn"
-          @click="handleRun"
-        >
-          ▶ Run
-        </button>
+        <div class="toolbar-actions">
+
+          <button
+            class="generate-btn"
+            @click="handleGenerate"
+          >
+            🤖 AI生成
+          </button>
+
+          <button
+            class="run-btn"
+            @click="handleRun"
+          >
+            ▶ Run
+          </button>
+
+        </div>
 
       </div>
 
@@ -213,6 +290,28 @@ const handleRun = async () => {
 .project-name {
   font-size: 14px;
   font-weight: 600;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.generate-btn {
+  border: none;
+
+  padding: 8px 16px;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  background: #7c3aed;
+  color: white;
+}
+
+.generate-btn:hover {
+  opacity: 0.9;
 }
 
 .run-btn {

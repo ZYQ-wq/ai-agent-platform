@@ -34,3 +34,10 @@ class RunProjectResponse(BaseModel):
     stdout: str = ""
     stderr: str = ""
     success: bool
+
+class GenerateCodeRequest(BaseModel):
+    project_id: str
+    prompt: str
+
+class GenerateCodeResponse(BaseModel):
+    content: str

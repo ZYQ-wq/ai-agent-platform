@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 
 from app.services.plugin_service import PluginService
+from app.services.codegen_service import CodeGenService
 
 from app.schemas.plugin import (
     PluginProjectCreate,
@@ -14,6 +15,11 @@ from app.schemas.plugin import (
     PluginFileResponse,
     PluginFileUpdate,
     RunProjectResponse
+)
+
+from app.schemas.plugin import (
+    GenerateCodeRequest,
+    GenerateCodeResponse
 )
 
 router = APIRouter(
@@ -91,4 +97,24 @@ def run_project(
     return PluginService.run_project(
         db=db,
         project_id=project_id
+    )
+
+from app.services.codegen_service import (
+    CodeGenService
+)
+
+@router.post(
+    "/generate",
+    response_model=GenerateCodeResponse
+)
+def generate_code(
+    request: GenerateCodeRequest
+):
+
+    code = CodeGenService.generate_code(
+        request.prompt
+    )
+
+    return GenerateCodeResponse(
+        content=code
     )
