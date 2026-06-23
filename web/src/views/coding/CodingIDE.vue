@@ -1,19 +1,37 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref,onMounted } from "vue";
 
 import ProjectSidebar from "@/components/coding/ProjectSidebar.vue";
 import CodingFileTree from "@/components/coding/CodingFileTree.vue";
 import CodingEditor from "@/components/coding/CodingEditor.vue";
+import CopilotPanel from "@/components/coding/CopilotPanel.vue";
 
 import {
   getProjectFiles,
   updateFile,
-  runProject
+  runProject,
+  createFile,
+  renameFile,
+  deleteFile
 } from "@/api/plugin";
 
 import {
   generateCode
 } from "@/api/codegen";
+
+import {
+  validateManifest,
+  editCode
+} from "@/api/plugin";
+
+import {
+  getAgents
+} from "@/api/agent";
+
+import {
+  bindAgent
+} from "@/api/plugin";
+
 
 const currentProject = ref<any>(null);
 
@@ -22,6 +40,11 @@ const files = ref<any[]>([]);
 const currentFile = ref<any>(null);
 
 const output = ref("");
+
+const agents = ref<any[]>([]);
+
+const selectedAgentId =
+  ref<number | null>(null);
 
 const saveTimeout = ref<any>(null);
 
@@ -34,11 +57,14 @@ const selectFile = (
 const onSelectProject = async (
   project: any
 ) => {
-  currentProject.value = project;
 
-  const res = await getProjectFiles(
-    project.id
-  );
+  currentProject.value = project;
+  selectedAgentId.value =project.agent_id;
+
+  const res =
+    await getProjectFiles(
+      project.id
+    );
 
   files.value = res;
 
@@ -123,20 +149,13 @@ const handleRun = async () => {
 const handleGenerate = async () => {
 
   if (!currentProject.value) {
-
-    alert(
-      "请先选择项目"
-    );
-
     return;
   }
 
   if (!currentFile.value) {
-
     alert(
-      "请先选择文件"
+      "请先选择一个文件"
     );
-
     return;
   }
 
@@ -151,43 +170,279 @@ const handleGenerate = async () => {
 
   try {
 
-    output.value =
-      "AI正在生成代码...\n";
-
-    const result =
+    const res =
       await generateCode(
         currentProject.value.id,
         prompt
       );
 
     currentFile.value.content =
-      result.content;
+      res.content;
 
     await updateFile(
       currentFile.value.id,
-      result.content
+      res.content
     );
 
-    output.value =
-      "AI生成成功";
+    alert("生成完成");
 
   } catch (error) {
 
     console.error(error);
 
-    output.value =
-      "AI生成失败";
+    alert("生成失败");
 
   }
 
 };
+
+const handleCreateFile =
+  async () => {
+
+    if (!currentProject.value) {
+      return;
+    }
+
+    const filename =
+      window.prompt(
+        "请输入文件名"
+      );
+
+    if (!filename) {
+      return;
+    }
+
+    try {
+
+      await createFile(
+        currentProject.value.id,
+        filename
+      );
+
+      const res =
+        await getProjectFiles(
+          currentProject.value.id
+        );
+
+      files.value = res;
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert("创建失败");
+
+    }
+};
+
+const handleRenameFile =
+  async (
+    file: any
+  ) => {
+
+    const newName =
+      window.prompt(
+        "新文件名",
+        file.path
+      );
+
+    if (
+      !newName ||
+      newName === file.path
+    ) {
+      return;
+    }
+
+    await renameFile(
+      file.id,
+      newName
+    );
+
+    const res =
+      await getProjectFiles(
+        currentProject.value.id
+      );
+
+    files.value = res;
+
+};
+
+const handleDeleteFile =
+  async (
+    file: any
+  ) => {
+
+    const ok =
+      confirm(
+        `删除 ${file.path} ?`
+      );
+
+    if (!ok) {
+      return;
+    }
+
+    await deleteFile(
+      file.id
+    );
+
+    const res =
+      await getProjectFiles(
+        currentProject.value.id
+      );
+
+    files.value = res;
+
+    if (
+      currentFile.value?.id ===
+      file.id
+    ) {
+
+      currentFile.value =
+        files.value[0] || null;
+
+    }
+
+};
+
+const handleValidate =
+  async () => {
+
+  if (!currentProject.value)
+    return;
+
+  const res =
+    await validateManifest(
+      currentProject.value.id
+    );
+
+  if (res.valid) {
+
+    output.value =
+      "✅ plugin.yaml 验证通过";
+
+  } else {
+
+    output.value =
+      "❌ plugin.yaml 错误\n\n" +
+      res.errors.join("\n");
+
+  }
+
+};
+
+const handleEditCode =
+  async () => {
+
+  if (!currentFile.value) {
+    return;
+  }
+
+  const prompt =
+    window.prompt(
+      "修改要求"
+    );
+
+  if (!prompt) {
+    return;
+  }
+
+  const res =
+    await editCode(
+      currentFile.value.content,
+      prompt
+    );
+
+  currentFile.value.content =
+    res.content;
+
+  await updateFile(
+    currentFile.value.id,
+    res.content
+  );
+
+};
+
+const handleCopilot =
+  async (
+    prompt: string
+  ) => {
+
+  if (!currentFile.value) {
+    return;
+  }
+
+  const res =
+    await editCode(
+      currentFile.value.content,
+      prompt
+    );
+
+  currentFile.value.content =
+    res.content;
+
+  await updateFile(
+    currentFile.value.id,
+    res.content
+  );
+};
+
+const handleBindAgent =
+  async () => {
+
+  if (!currentProject.value) {
+    return;
+  }
+
+  try {
+
+    await bindAgent(
+      currentProject.value.id,
+      selectedAgentId.value
+    );
+
+    alert(
+      "Agent绑定成功"
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "绑定失败"
+    );
+
+  }
+
+};
+
+onMounted(async () => {
+
+  try {
+
+    const res =
+      await getAgents();
+
+    agents.value = res;
+
+  } catch (error) {
+
+    console.error(
+      "获取Agent失败",
+      error
+    );
+
+  }
+
+});
+
 </script>
 
 <template>
 
   <div class="coding-layout">
 
-    <!-- 项目列表 -->
+    <!-- 左侧项目栏 -->
     <ProjectSidebar
       @select-project="onSelectProject"
     />
@@ -195,10 +450,16 @@ const handleGenerate = async () => {
     <!-- 文件树 -->
     <CodingFileTree
       :files="files"
+      :current-file-id="
+        currentFile?.id
+      "
       @select-file="selectFile"
+      @create-file="handleCreateFile"
+      @delete-file="handleDeleteFile"
+      @rename-file="handleRenameFile"
     />
 
-    <!-- 主工作区 -->
+    <!-- 工作区 -->
     <div class="workspace">
 
       <!-- 顶部工具栏 -->
@@ -208,10 +469,30 @@ const handleGenerate = async () => {
           {{ currentProject?.name }}
         </div>
 
-        <div class="toolbar-actions">
+        <div class="actions">
+
+          <select
+            v-model="selectedAgentId"
+            @change="handleBindAgent"
+            class="agent-select"
+          >
+
+            <option :value="null">
+              不绑定Agent
+            </option>
+
+            <option
+              v-for="agent in agents"
+              :key="agent.id"
+              :value="agent.id"
+            >
+              {{ agent.name }}
+            </option>
+
+          </select>
 
           <button
-            class="generate-btn"
+            class="ai-btn"
             @click="handleGenerate"
           >
             🤖 AI生成
@@ -222,6 +503,20 @@ const handleGenerate = async () => {
             @click="handleRun"
           >
             ▶ Run
+          </button>
+
+          <button
+            class="validate-btn"
+            @click="handleValidate"
+          >
+            Validate
+          </button>
+
+          <button
+            class="ai-btn"
+            @click="handleEditCode"
+          >
+            ✨ AI修改
           </button>
 
         </div>
@@ -254,6 +549,12 @@ const handleGenerate = async () => {
       </div>
 
     </div>
+
+    <CopilotPanel
+      @send-message="
+        handleCopilot
+      "
+    />
 
   </div>
 
@@ -292,12 +593,12 @@ const handleGenerate = async () => {
   font-weight: 600;
 }
 
-.toolbar-actions {
+.actions {
   display: flex;
   gap: 10px;
 }
 
-.generate-btn {
+.ai-btn {
   border: none;
 
   padding: 8px 16px;
@@ -310,7 +611,7 @@ const handleGenerate = async () => {
   color: white;
 }
 
-.generate-btn:hover {
+.ai-btn:hover {
   opacity: 0.9;
 }
 
@@ -377,5 +678,18 @@ const handleGenerate = async () => {
     Consolas,
     Monaco,
     monospace;
+}
+.agent-select {
+  height: 36px;
+
+  padding: 0 10px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 8px;
+
+  background: white;
+
+  cursor: pointer;
 }
 </style>

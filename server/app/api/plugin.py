@@ -7,6 +7,9 @@ from app.core.database import get_db
 
 from app.services.plugin_service import PluginService
 from app.services.codegen_service import CodeGenService
+from app.services.project_agent_service import (
+    ProjectAgentService
+)
 
 from app.schemas.plugin import (
     PluginProjectCreate,
@@ -14,7 +17,12 @@ from app.schemas.plugin import (
     PluginProjectResponse,
     PluginFileResponse,
     PluginFileUpdate,
-    RunProjectResponse
+    RunProjectResponse,
+    RenameFileRequest,
+    EditCodeRequest,
+    EditCodeResponse,
+    AgentRequest,
+    AgentResponse
 )
 
 from app.schemas.plugin import (
@@ -117,4 +125,110 @@ def generate_code(
 
     return GenerateCodeResponse(
         content=code
+    )
+
+@router.post(
+    "/{project_id}/files",
+    response_model=PluginFileResponse
+)
+def create_file(
+    project_id: str,
+    request: PluginFileCreate,
+    db: Session = Depends(get_db)
+):
+    return PluginService.create_file(
+        db=db,
+        project_id=project_id,
+        path=request.path,
+        language=request.language
+    )
+
+@router.delete(
+    "/files/{file_id}"
+)
+def delete_file(
+    file_id: str,
+    db: Session = Depends(get_db)
+):
+    return PluginService.delete_file(
+        db=db,
+        file_id=file_id
+    )
+
+@router.put(
+    "/files/{file_id}/rename",
+    response_model=PluginFileResponse
+)
+def rename_file(
+    file_id: str,
+    request: RenameFileRequest,
+    db: Session = Depends(get_db)
+):
+    return PluginService.rename_file(
+        db=db,
+        file_id=file_id,
+        path=request.path
+    )
+
+@router.post(
+    "/edit",
+    response_model=EditCodeResponse
+)
+def edit_code(
+    request: EditCodeRequest
+):
+
+    content = CodeGenService.edit_code(
+        request.content,
+        request.prompt
+    )
+
+    return {
+        "content": content
+    }
+
+@router.put(
+    "/{project_id}/agent/{agent_id}",
+    response_model=PluginProjectResponse
+)
+def bind_agent(
+    project_id: str,
+    agent_id: int,
+    db: Session = Depends(get_db)
+):
+    return PluginService.bind_agent(
+        db=db,
+        project_id=project_id,
+        agent_id=agent_id
+    )
+
+@router.put(
+    "/{project_id}/agent/unbind",
+    response_model=PluginProjectResponse
+)
+def unbind_agent(
+    project_id: str,
+    db: Session = Depends(get_db)
+):
+    return PluginService.bind_agent(
+        db=db,
+        project_id=project_id,
+        agent_id=None
+    )
+
+@router.post(
+    "/agent/run",
+    response_model=AgentResponse
+)
+def run_agent(
+    request: AgentRequest,
+    db: Session = Depends(get_db)
+):
+
+    return (
+        ProjectAgentService.run_agent(
+            db=db,
+            project_id=request.project_id,
+            prompt=request.prompt
+        )
     )

@@ -2,6 +2,7 @@ from uuid import uuid4
 import subprocess
 import tempfile
 import os
+from app.models.agent import Agent
 
 
 from app.services.sandbox_service import SandboxService
@@ -175,3 +176,151 @@ class PluginService:
         db.refresh(file)
 
         return file
+    
+    @staticmethod
+    def create_file(
+        db: Session,
+        project_id: str,
+        path: str,
+        language: str
+    ):
+
+        file = PluginFile(
+            id=str(uuid4()),
+            project_id=project_id,
+            path=path,
+            language=language,
+            content=""
+        )
+
+        db.add(file)
+
+        db.commit()
+
+        db.refresh(file)
+
+        return file
+    
+    @staticmethod
+    def delete_file(
+        db: Session,
+        file_id: str
+    ):
+
+        file = (
+            db.query(PluginFile)
+            .filter(
+                PluginFile.id == file_id
+            )
+            .first()
+        )
+
+        if not file:
+            return {
+                "success": False
+            }
+
+        db.delete(file)
+
+        db.commit()
+
+        return {
+            "success": True
+        }
+
+    @staticmethod
+    def rename_file(
+        db: Session,
+        file_id: str,
+        path: str
+    ):
+
+        file = (
+            db.query(PluginFile)
+            .filter(
+                PluginFile.id == file_id
+            )
+            .first()
+        )
+
+        if not file:
+            return None
+
+        file.path = path
+
+        db.commit()
+
+        db.refresh(file)
+
+        return file
+
+    @staticmethod
+    def bind_agent(
+        db: Session,
+        project_id: str,
+        agent_id: int
+    ):
+
+        project = (
+            db.query(
+                PluginProject
+            )
+            .filter(
+                PluginProject.id == project_id
+            )
+            .first()
+        )
+
+        if not project:
+            raise Exception("项目不存在")
+
+        project.agent_id = agent_id
+
+        db.commit()
+
+        db.refresh(project)
+
+        return project
+    
+    @staticmethod
+    def bind_agent(
+        db: Session,
+        project_id: str,
+        agent_id: int | None
+    ):
+
+        project = (
+            db.query(
+                PluginProject
+            )
+            .filter(
+                PluginProject.id == project_id
+            )
+            .first()
+        )
+
+        if not project:
+            raise Exception(
+                "项目不存在"
+            )
+
+        agent = (
+            db.query(Agent)
+            .filter(
+                Agent.id == agent_id
+            )
+            .first()
+        )
+
+        if not agent:
+            raise Exception(
+                "Agent不存在"
+            )
+
+        project.agent_id = agent_id
+
+        db.commit()
+
+        db.refresh(project)
+
+        return project

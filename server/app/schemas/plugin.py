@@ -20,9 +20,20 @@ class PluginFileResponse(BaseModel):
 
 
 class PluginProjectResponse(BaseModel):
+
     id: str
+
     name: str
-    description: str | None
+
+    description: str | None = None
+
+    agent_id: int | None = None
+
+    runtime: str
+
+    model_config = {
+        "from_attributes": True
+    }
 
 class PluginFileUpdate(BaseModel):
     content: str
@@ -41,3 +52,38 @@ class GenerateCodeRequest(BaseModel):
 
 class GenerateCodeResponse(BaseModel):
     content: str
+
+class PluginFileCreate(BaseModel):
+    path: str
+    language: str = "plaintext"
+
+class RenameFileRequest(BaseModel):
+    path: str
+
+# 用于YAML解析
+class PluginManifestResponse(
+    BaseModel
+):
+
+    valid: bool
+
+    data: dict | None = None
+
+    errors: list[str] = []
+
+# AI修改代码
+class EditCodeRequest(BaseModel):
+    content: str
+    prompt: str
+
+
+class EditCodeResponse(BaseModel):
+    content: str
+
+# 多文件操作
+class AgentRequest(BaseModel):
+    project_id: str
+    prompt: str
+
+class AgentResponse(BaseModel):
+    files: list[dict]
