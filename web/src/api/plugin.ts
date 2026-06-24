@@ -114,3 +114,34 @@ export const bindAgent = (
   );
 
 };
+
+export const agentChat = (
+  projectId: string,
+  prompt: string
+) => {
+
+  return request.post(
+    "/plugins/agent",
+    {
+      project_id: projectId,
+      prompt
+    }
+  );
+
+};
+
+export const applyChanges = (
+  projectId: string,
+  files: any[]
+) => {
+
+  return request.post(
+    "/plugins/apply",
+    {
+      project_id: projectId,
+      files
+    }
+  );
+
+};
+

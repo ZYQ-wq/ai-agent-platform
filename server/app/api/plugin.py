@@ -22,12 +22,17 @@ from app.schemas.plugin import (
     EditCodeRequest,
     EditCodeResponse,
     AgentRequest,
-    AgentResponse
+    AgentResponse,
+    ApplyChangesRequest,
+    ApplyChangesResponse,
+    ApplyFileChange
 )
 
 from app.schemas.plugin import (
     GenerateCodeRequest,
-    GenerateCodeResponse
+    GenerateCodeResponse,
+    AgentResponse,
+    AgentRequest
 )
 
 router = APIRouter(
@@ -231,4 +236,33 @@ def run_agent(
             project_id=request.project_id,
             prompt=request.prompt
         )
+    )
+
+@router.post(
+    "/agent",
+    response_model=AgentResponse
+)
+def agent_chat(
+    request: AgentRequest,
+    db: Session = Depends(get_db)
+):
+
+    return ProjectAgentService.run_agent(
+        db=db,
+        project_id=request.project_id,
+        prompt=request.prompt
+    )
+
+@router.post(
+    "/apply",
+    response_model=ApplyChangesResponse
+)
+def apply_changes(
+request: ApplyChangesRequest,
+db: Session = Depends(get_db)
+):
+    return PluginService.apply_changes(
+        db=db,
+        project_id=request.project_id,
+        files=request.files
     )

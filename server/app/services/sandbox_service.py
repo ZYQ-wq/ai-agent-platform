@@ -6,12 +6,14 @@ client = docker.from_env()
 class SandboxService:
 
     @staticmethod
-    def run_python(workdir: str):
-
+    def run_python(
+        workdir: str,
+        entry_file:str ="main.py"
+    ):
         container = client.containers.run(
             image="python:3.11-slim",
 
-            command="python main.py",
+            command=f"python {entry_file}",
 
             working_dir="/workspace",
 
@@ -49,4 +51,17 @@ class SandboxService:
         return {
             "success": result["StatusCode"] == 0,
             "logs": logs
+        }
+    
+    @staticmethod
+    def run_web(
+        workdir: str
+    ):
+
+        return {
+            "success": True,
+            "logs":
+                "检测到Web项目\n"
+                "当前版本暂不支持浏览器预览\n"
+                "请后续实现 Web Preview"
         }

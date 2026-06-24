@@ -1,13 +1,26 @@
-from sqlalchemy import Column, String, Text, ForeignKey
+from uuid import uuid4
+
+from sqlalchemy import (
+    Column,
+    String,
+    Text,
+    ForeignKey
+)
+
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
 
 class PluginFile(Base):
+
     __tablename__ = "plugin_files"
 
-    id = Column(String, primary_key=True)
+    id = Column(
+        String,
+        primary_key=True,
+        default=lambda: str(uuid4())
+    )
 
     project_id = Column(
         String,

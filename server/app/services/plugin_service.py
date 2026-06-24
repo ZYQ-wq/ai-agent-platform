@@ -123,9 +123,38 @@ class PluginService:
                         file.content or ""
                     )
 
-            result = SandboxService.run_python(
-                tmp
-            )
+            file_paths = {
+                file.path
+                for file in files
+            }
+            if "main.py" in file_paths:
+
+                result = SandboxService.run_python(
+                    tmp,
+                    "main.py"
+                )
+
+            elif "app.py" in file_paths:
+
+                result = SandboxService.run_python(
+                    tmp,
+                    "app.py"
+                )
+
+            elif "index.html" in file_paths:
+
+                result = SandboxService.run_web(
+                    tmp
+                )
+
+            else:
+
+                return {
+                    "success": False,
+                    "stdout": "",
+                    "stderr":
+                        "未找到入口文件"
+                }
 
             return {
                 "success": result["success"],
@@ -253,34 +282,6 @@ class PluginService:
         db.refresh(file)
 
         return file
-
-    @staticmethod
-    def bind_agent(
-        db: Session,
-        project_id: str,
-        agent_id: int
-    ):
-
-        project = (
-            db.query(
-                PluginProject
-            )
-            .filter(
-                PluginProject.id == project_id
-            )
-            .first()
-        )
-
-        if not project:
-            raise Exception("项目不存在")
-
-        project.agent_id = agent_id
-
-        db.commit()
-
-        db.refresh(project)
-
-        return project
     
     @staticmethod
     def bind_agent(
@@ -324,3 +325,67 @@ class PluginService:
         db.refresh(project)
 
         return project
+
+    @staticmethod
+    def apply_changes(
+        db: Session,
+        project_id: str,
+        files: list
+    ):
+        for item in files:
+
+            path = item.path
+
+            action = item.action
+
+            content = item.content
+
+            file = (
+                db.query(
+                    PluginFile
+                )
+                .filter(
+                    PluginFile.project_id
+                    == project_id,
+
+                    PluginFile.path
+                    == path
+                )
+                .first()
+            )
+
+            # create
+            if action == "create":
+
+                if not file:
+
+                    db.add(
+                        PluginFile(
+                            project_id=project_id,
+                            path=path,
+                            language="plaintext",
+                            content=content
+                        )
+                    )
+
+            # modify
+            elif action == "modify":
+
+                if file:
+
+                    file.content = content
+
+            # delete
+            elif action == "delete":
+
+                if file:
+
+                    db.delete(file)
+
+        db.commit()
+
+        return {
+            "success": True,
+            "message": "变更已应用"
+        }
+

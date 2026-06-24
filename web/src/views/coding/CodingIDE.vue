@@ -5,6 +5,7 @@ import ProjectSidebar from "@/components/coding/ProjectSidebar.vue";
 import CodingFileTree from "@/components/coding/CodingFileTree.vue";
 import CodingEditor from "@/components/coding/CodingEditor.vue";
 import CopilotPanel from "@/components/coding/CopilotPanel.vue";
+import AgentChatPanel from "@/components/coding/AgentChatPanel.vue";
 
 import {
   getProjectFiles,
@@ -12,7 +13,9 @@ import {
   runProject,
   createFile,
   renameFile,
-  deleteFile
+  deleteFile,
+  agentChat,
+  applyChanges
 } from "@/api/plugin";
 
 import {
@@ -436,6 +439,129 @@ onMounted(async () => {
 
 });
 
+const messages = ref<any[]>([]);
+
+const pendingChanges = ref<any[]>([]);
+
+function parseAgentFiles(
+  text: string
+) {
+
+  const files = [];
+
+  const regex =
+    /FILE:\s*(.*?)\nACTION:\s*(.*?)\n([\s\S]*?)(?=\nFILE:|\s*$)/g;
+
+  let match;
+
+  while (
+    (match = regex.exec(text))
+    !== null
+  ) {
+
+    files.push({
+      path:
+        match[1].trim(),
+
+      action:
+        match[2].trim(),
+
+      content:
+        match[3].trim()
+    });
+
+  }
+
+  return files;
+}
+
+const handleAgentMessage =
+  async (
+    prompt: string
+  ) => {
+
+  if (!currentProject.value) {
+    return;
+  }
+
+  messages.value.push({
+    role: "user",
+    content: prompt
+  });
+
+  try {
+
+    const res =
+      await agentChat(
+        currentProject.value.id,
+        prompt
+      );
+
+    messages.value.push({
+      role: "assistant",
+      content: res.response
+    });
+
+    pendingChanges.value = res.files || []
+
+  } catch (error) {
+
+    console.error(error);
+
+    messages.value.push({
+      role: "assistant",
+      content: "Agent执行失败"
+    });
+
+  }
+
+};
+
+const handleApplyChanges =
+  async () => {
+
+  if (!currentProject.value) {
+    return;
+  }
+
+  if (
+    pendingChanges.value.length === 0
+  ) {
+    return;
+  }
+
+  try {
+
+    await applyChanges(
+      currentProject.value.id,
+      pendingChanges.value
+    );
+
+    const res =
+      await getProjectFiles(
+        currentProject.value.id
+      );
+
+    files.value = res;
+
+    pendingChanges.value = [];
+
+    messages.value.push({
+      role: "assistant",
+      content:
+        "✅ 变更已应用到项目"
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert("应用失败");
+
+  }
+
+};
+
 </script>
 
 <template>
@@ -550,9 +676,16 @@ onMounted(async () => {
 
     </div>
 
-    <CopilotPanel
+    <AgentChatPanel
+      :messages="messages"
+      :pending-changes="
+        pendingChanges
+      "
       @send-message="
-        handleCopilot
+        handleAgentMessage
+      "
+      @apply-changes="
+        handleApplyChanges
       "
     />
 

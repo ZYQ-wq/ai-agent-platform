@@ -85,5 +85,55 @@ class AgentRequest(BaseModel):
     project_id: str
     prompt: str
 
+
+
+# Agent 不再返回代码，而是返回文件变更计划
+class FileChange(BaseModel):
+
+    path: str
+
+    action: str
+
+    content: str
+
+
+from pydantic import BaseModel
+
+
+class AgentRequest(BaseModel):
+
+    project_id: str
+
+    prompt: str
+
+
+
+class ApplyFileChange(BaseModel):
+    path: str
+    action: str
+    content: str = ""
+
+class ApplyChangesRequest(BaseModel):
+    project_id: str
+    files: list[ApplyFileChange]
+
+
+class ApplyChangesResponse(BaseModel):
+    success: bool
+
+    message: str
+
+class FileChange(BaseModel):
+
+    path: str
+
+    action: str
+
+    content: str
+
+
 class AgentResponse(BaseModel):
-    files: list[dict]
+
+    message: str
+
+    files: list[FileChange]

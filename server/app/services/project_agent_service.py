@@ -1,4 +1,3 @@
-import json
 
 from sqlalchemy.orm import Session
 
@@ -13,6 +12,7 @@ from app.models.agent import Agent
 from app.models.plugin_project import PluginProject
 from app.models.plugin_file import PluginFile
 
+import re
 
 client = OpenAI(
     api_key=OPENAI_API_KEY,
@@ -117,40 +117,91 @@ CONTENT:
         # -------------------
         # Agent Prompt
         # -------------------
-
         final_prompt = f"""
-你是一个软件开发Agent。
+你是一个高级软件开发 Agent。
 
-Agent配置：
+Agent 配置：
 
 {agent.system_prompt}
 
-下面是项目全部文件：
-
 {project_context}
-
-用户需求：
 
 {prompt}
 
-请分析项目。
+请分析当前项目。
 
-决定哪些文件需要修改。
+决定：
 
-返回JSON格式：
+哪些文件需要创建
+哪些文件需要修改
+哪些文件需要删除
 
-{{
-    "files":[
-        {{
-            "path":"main.py",
-            "content":"完整文件内容"
-        }}
-    ]
-}}
+不要直接执行修改。
 
-不要返回Markdown。
-不要返回解释。
-只返回JSON。
+不要解释。
+
+不要返回 JSON。
+
+创建文件：
+例如：
+FILE: index.html
+ACTION: create
+
+```html
+<html>
+ ···
+<html>
+
+修改文件：
+
+FILE: main.py
+ACTION: modify
+
+完整文件内容
+
+删除文件：
+
+FILE: old.py
+ACTION: delete
+
+一个文件对应一个 FILE 块
+content 必须是完整文件
+
+不要输出：
+
+// existing code
+
+// omitted
+
+原有代码省略
+
+等内容
+
+必须返回完整代码
+如果没有变化，不要返回该文件
+可以返回多个 FILE 块
+
+例如：
+
+FILE: index.html
+ACTION: create
+
+...
+
+FILE: style.css
+ACTION: create
+
+...
+
+FILE: app.py
+ACTION: modify
+
+...
+不允许返回 JSON
+不允许解释
+只输出 FILE + ACTION + 代码块
+
+开始分析。
 """
 
         # -------------------
@@ -176,82 +227,72 @@ Agent配置：
             .message.content
         )
 
-        # -------------------
-        # JSON解析
-        # -------------------
-
-        try:
-
-            result = json.loads(
+        parsed_files = (
+            ProjectAgentService
+            .parse_file_blocks(
                 result_text
             )
+        )
 
-        except Exception:
+        print("====== Parsed Files ======")
 
-            raise Exception(
-                f"Agent返回非法JSON:\n{result_text}"
+        for f in parsed_files:
+            print(
+                f["action"],
+                f["path"]
             )
 
-        changed_files = []
+        print("====== Agent Prompt ======")
+        print(agent.system_prompt)
 
-        # -------------------
-        # 写回数据库
-        # -------------------
+        print("====== Final Prompt ======")
+        print(final_prompt) 
 
-        for item in result.get(
-            "files",
-            []
-        ):
+        return {
+            "message":
+                f"发现 {len(parsed_files)} 个文件变更",
 
-            path = item.get(
-                "path"
+            "files":
+                parsed_files
+        }
+    
+    @staticmethod
+    def parse_file_blocks(
+        text: str
+    ):
+
+        files = []
+
+        pattern = re.compile(
+            r"FILE:\s*(.+?)\s*\nACTION:\s*(.+?)\s*\n([\s\S]*?)(?=\nFILE:|\Z)",
+            re.S
+        )
+
+        matches = pattern.findall(
+            text
+        )
+
+        for path, action, content in matches:
+
+            # 去掉 markdown 代码块
+            content = re.sub(
+                r"^```[a-zA-Z0-9]*\n?",
+                "",
+                content.strip()
             )
 
-            content = item.get(
-                "content"
+            content = re.sub(
+                r"\n```$",
+                "",
+                content.strip()
             )
 
-            if not path:
-                continue
-
-            file = (
-                db.query(
-                    PluginFile
-                )
-                .filter(
-                    PluginFile.project_id
-                    == project.id,
-                    PluginFile.path
-                    == path
-                )
-                .first()
-            )
-
-            # 已存在
-            if file:
-
-                file.content = content
-
-            # 新文件
-            else:
-
-                file = PluginFile(
-                    project_id=project.id,
-                    path=path,
-                    language="python",
-                    content=content
-                )
-
-                db.add(file)
-
-            changed_files.append(
+            files.append(
                 {
-                    "path": path
+                    "path": path.strip(),
+                    "action": action.strip(),
+                    "content": content.strip()
                 }
             )
 
-        db.commit()
-
-        return {
-            "files": changed_files
-        }
+        return files
