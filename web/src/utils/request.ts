@@ -1,8 +1,11 @@
 import axios from "axios";
 
+export const DEFAULT_REQUEST_TIMEOUT = 30000;
+export const LONG_REQUEST_TIMEOUT = 180000;
+
 const request = axios.create({
   baseURL: "http://localhost:8000",
-  timeout: 30000,
+  timeout: DEFAULT_REQUEST_TIMEOUT,
 });
 
 request.interceptors.request.use(

@@ -1,4 +1,3 @@
-```vue
 <template>
   <div class="workspace">
 
@@ -548,7 +547,12 @@ export default defineComponent({
 
         console.error(err)
 
-        alert("检索失败")
+        const detail =
+          (err as any)?.response?.data?.detail
+
+        alert(
+          detail || "检索失败"
+        )
       }
     }
 
@@ -963,4 +967,3 @@ export default defineComponent({
   line-height: 1.7;
 }
 </style>
-```

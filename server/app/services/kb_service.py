@@ -72,6 +72,11 @@ def upload_kb_service(file, user_id: str, kb_id: int):
 
             vector = get_embedding(text)
 
+            if not vector:
+                raise ValueError(
+                    f"第 {i + 1} 个切片向量化失败，请检查 Embedding 配置"
+                )
+
             chunk = KnowledgeChunk(
                 knowledge_id=kb_id,
                 file_id=kb_file.id,

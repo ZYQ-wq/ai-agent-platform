@@ -129,6 +129,14 @@ const handleRun = async () => {
     output.value =
       "正在运行...\n";
 
+    if (currentFile.value?.content != null) {
+      clearTimeout(saveTimeout.value);
+      await updateFile(
+        currentFile.value.id,
+        currentFile.value.content
+      );
+    }
+
     const res =
       await runProject(
         currentProject.value.id
@@ -137,6 +145,13 @@ const handleRun = async () => {
     output.value =
       (res.stdout || "") +
       (res.stderr || "");
+
+    if (res.preview_url) {
+      window.open(
+        res.preview_url,
+        "_blank"
+      );
+    }
 
   } catch (error) {
 
@@ -443,6 +458,20 @@ const messages = ref<any[]>([]);
 
 const pendingChanges = ref<any[]>([]);
 
+const agentLoading = ref(false);
+
+const isRequestTimeout = (error: unknown) => {
+  const err = error as {
+    code?: string;
+    message?: string;
+  };
+
+  return (
+    err?.code === "ECONNABORTED" ||
+    (err?.message || "").includes("timeout")
+  );
+};
+
 function parseAgentFiles(
   text: string
 ) {
@@ -489,6 +518,8 @@ const handleAgentMessage =
     content: prompt
   });
 
+  agentLoading.value = true;
+
   try {
 
     const res =
@@ -499,10 +530,21 @@ const handleAgentMessage =
 
     messages.value.push({
       role: "assistant",
-      content: res.response
+      content: res.message || "Agent 已完成分析"
     });
 
-    pendingChanges.value = res.files || []
+    pendingChanges.value = res.files || [];
+
+    if (
+      pendingChanges.value.length > 0 &&
+      pendingChanges.value.some(
+        (file: any) =>
+          file.action === "delete" ||
+          (file.content || "").trim()
+      )
+    ) {
+      await handleApplyChanges();
+    }
 
   } catch (error) {
 
@@ -510,9 +552,13 @@ const handleAgentMessage =
 
     messages.value.push({
       role: "assistant",
-      content: "Agent执行失败"
+      content: isRequestTimeout(error)
+        ? "Agent 生成超时。复杂应用可能需要 1-3 分钟，请稍后重试。"
+        : "Agent 执行失败，请检查后端日志后重试。"
     });
 
+  } finally {
+    agentLoading.value = false;
   }
 
 };
@@ -681,6 +727,7 @@ const handleApplyChanges =
       :pending-changes="
         pendingChanges
       "
+      :loading="agentLoading"
       @send-message="
         handleAgentMessage
       "

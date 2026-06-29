@@ -107,7 +107,9 @@
 
         <div class="card-stats">
           <span>
-            即将上线
+            已创建：
+            {{ codingCount || 0 }}
+            个
           </span>
         </div>
 
@@ -145,6 +147,14 @@
         <span>进入知识库</span>
       </div>
 
+      <div
+        class="action-item"
+        @click="goToAICode"
+      >
+        <span class="action-icon">+</span>
+        <span>进入 AI 编程</span>
+      </div>
+
     </div>
 
   </div>
@@ -171,6 +181,8 @@ export default defineComponent({
     const workflowCount = ref(0)
 
     const kbCount = ref(0)
+
+    const codingCount = ref(0)
 
     // =====================
     // 加载数据
@@ -239,6 +251,23 @@ export default defineComponent({
           kbCount.value = 0
         }
 
+        // AI Coding
+        try {
+
+          const res =
+            await axios.get(
+              "http://127.0.0.1:8000/plugins",
+              { headers }
+            )
+
+          codingCount.value =
+            res.data?.length || 0
+
+        } catch {
+
+          codingCount.value = 0
+        }
+
       } catch (err) {
 
         console.error(err)
@@ -270,7 +299,7 @@ export default defineComponent({
 
     const goToAICode = () => {
 
-      alert("AI编程模块开发中")
+      router.push("/coding")
     }
 
     const goToCreateAgent = () => {
@@ -297,6 +326,7 @@ export default defineComponent({
       agentCount,
       workflowCount,
       kbCount,
+      codingCount,
 
       goToAgents,
       goToWorkflows,

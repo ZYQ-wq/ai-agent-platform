@@ -42,9 +42,10 @@ class UpdateFileRequest(BaseModel):
     content: str
 
 class RunProjectResponse(BaseModel):
+    success: bool
     stdout: str = ""
     stderr: str = ""
-    success: bool
+    preview_url:str | None= None
 
 class GenerateCodeRequest(BaseModel):
     project_id: str

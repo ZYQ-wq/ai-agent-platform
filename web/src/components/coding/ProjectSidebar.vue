@@ -97,7 +97,14 @@ onMounted(() => {
   <div class="project-sidebar">
 
     <div class="title">
-      📦 我的插件
+      💻 AI 编程
+    </div>
+
+    <div
+      v-if="projects.length === 0"
+      class="empty-tip"
+    >
+      暂无项目，点击下方新建
     </div>
 
     <div
@@ -142,6 +149,13 @@ onMounted(() => {
   font-weight: 600;
 
   margin-bottom: 16px;
+}
+
+.empty-tip {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 12px;
+  line-height: 1.5;
 }
 
 .project-item {

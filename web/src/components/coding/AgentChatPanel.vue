@@ -6,14 +6,19 @@ const emit = defineEmits([
   "apply-changes"
 ]);
 
-defineProps<{
+const props = defineProps<{
   messages: any[];
   pendingChanges: any[];
+  loading?: boolean;
 }>();
 
 const input = ref("");
 
 const send = () => {
+
+  if (props.loading) {
+    return;
+  }
 
   if (!input.value.trim()) {
     return;
@@ -88,6 +93,14 @@ const send = () => {
           {{ file.path }}
         </div>
 
+        <div class="change-meta">
+          {{
+            file.action === "delete"
+              ? "删除"
+              : `${(file.content || "").length} 字符`
+          }}
+        </div>
+
       </div>
 
       <button
@@ -107,15 +120,17 @@ const send = () => {
 
       <textarea
         v-model="input"
+        :disabled="loading"
         placeholder="
 请输入需求...
 "
       />
 
       <button
+        :disabled="loading"
         @click="send"
       >
-        Send
+        {{ loading ? "生成中..." : "Send" }}
       </button>
 
     </div>
@@ -188,10 +203,16 @@ const send = () => {
   display:flex;
   justify-content:
     space-between;
+  gap: 8px;
 
   margin-top:6px;
 
   font-size:13px;
+}
+
+.change-meta{
+  color:#6b7280;
+  white-space:nowrap;
 }
 
 .apply-btn{

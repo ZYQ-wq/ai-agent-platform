@@ -19,8 +19,72 @@ client = OpenAI(
     base_url=OPENAI_BASE_URL
 )
 
+DEFAULT_CODING_AGENT_PROMPT = """
+你是一名全栈软件工程师，擅长编写完整、可运行的小型应用。
+生成 Web 应用时优先使用 index.html + CSS + JavaScript 单页或多文件结构。
+每次输出必须是完整文件内容，禁止省略、禁止占位符、禁止 "// existing code"。
+"""
+
 
 class ProjectAgentService:
+
+    @staticmethod
+    def strip_code_fences(content: str) -> str:
+        content = (content or "").strip()
+
+        fenced = re.match(
+            r"^```(?:[a-zA-Z0-9_-]+)?\s*\r?\n([\s\S]*?)\r?\n```\s*$",
+            content
+        )
+        if fenced:
+            return fenced.group(1).strip()
+
+        content = re.sub(
+            r"^```(?:[a-zA-Z0-9_-]+)?\s*\r?\n?",
+            "",
+            content
+        )
+        content = re.sub(
+            r"\r?\n?```\s*$",
+            "",
+            content
+        )
+
+        return content.strip()
+
+    @staticmethod
+    def parse_file_blocks(
+        text: str
+    ):
+
+        files = []
+
+        pattern = re.compile(
+            r"FILE:\s*(.+?)\s*\r?\n"
+            r"ACTION:\s*(.+?)\s*\r?\n"
+            r"([\s\S]*?)"
+            r"(?=\r?\nFILE:|\Z)",
+            re.IGNORECASE
+        )
+
+        matches = pattern.findall(
+            text or ""
+        )
+
+        for path, action, content in matches:
+            cleaned = ProjectAgentService.strip_code_fences(
+                content
+            )
+
+            files.append(
+                {
+                    "path": path.strip(),
+                    "action": action.strip().lower(),
+                    "content": cleaned
+                }
+            )
+
+        return files
 
     @staticmethod
     def run_agent(
@@ -28,10 +92,6 @@ class ProjectAgentService:
         project_id: str,
         prompt: str
     ):
-
-        # -------------------
-        # 查询项目
-        # -------------------
 
         project = (
             db.query(
@@ -48,33 +108,21 @@ class ProjectAgentService:
                 "项目不存在"
             )
 
-        # -------------------
-        # 查询Agent
-        # -------------------
+        agent_prompt = DEFAULT_CODING_AGENT_PROMPT
 
-        if not project.agent_id:
-            raise Exception(
-                "项目未绑定Agent"
+        if project.agent_id:
+            agent = (
+                db.query(
+                    Agent
+                )
+                .filter(
+                    Agent.id == project.agent_id
+                )
+                .first()
             )
 
-        agent = (
-            db.query(
-                Agent
-            )
-            .filter(
-                Agent.id == project.agent_id
-            )
-            .first()
-        )
-
-        if not agent:
-            raise Exception(
-                "Agent不存在"
-            )
-
-        # -------------------
-        # 获取全部文件
-        # -------------------
+            if agent and agent.system_prompt:
+                agent_prompt = agent.system_prompt
 
         files = (
             db.query(
@@ -87,23 +135,14 @@ class ProjectAgentService:
             .all()
         )
 
-        # -------------------
-        # 构造上下文
-        # -------------------
-
         project_context = ""
 
         for file in files:
-
             content = (
                 file.content or ""
-            )
-
-            # 防止超长
-            content = content[:8000]
+            )[:8000]
 
             project_context += f"""
-
 FILE:
 {file.path}
 
@@ -114,110 +153,60 @@ CONTENT:
 
 """
 
-        # -------------------
-        # Agent Prompt
-        # -------------------
         final_prompt = f"""
 你是一个高级软件开发 Agent。
 
 Agent 配置：
 
-{agent.system_prompt}
+{agent_prompt}
+
+当前项目文件：
 
 {project_context}
 
+用户需求：
+
 {prompt}
 
-请分析当前项目。
+请根据需求生成完整、可运行的代码。
 
-决定：
+规则：
+1. 只输出 FILE / ACTION / 代码，不要 JSON，不要解释。
+2. 每个文件必须输出完整内容，禁止省略。
+3. Web 小应用优先创建或修改 index.html、style.css、script.js 等文件。
+4. 如果默认模板文件 main.py / plugin.yaml / README.md 不需要，可以 ACTION: delete。
+5. 如果文件已存在且需要更新，使用 ACTION: modify 并给出完整新内容。
+6. 如果文件不存在，使用 ACTION: create。
 
-哪些文件需要创建
-哪些文件需要修改
-哪些文件需要删除
+格式示例：
 
-不要直接执行修改。
-
-不要解释。
-
-不要返回 JSON。
-
-创建文件：
-例如：
 FILE: index.html
 ACTION: create
-
 ```html
-<html>
- ···
-<html>
-
-修改文件：
-
-FILE: main.py
-ACTION: modify
-
-完整文件内容
-
-删除文件：
-
-FILE: old.py
-ACTION: delete
-
-一个文件对应一个 FILE 块
-content 必须是完整文件
-
-不要输出：
-
-// existing code
-
-// omitted
-
-原有代码省略
-
-等内容
-
-必须返回完整代码
-如果没有变化，不要返回该文件
-可以返回多个 FILE 块
-
-例如：
-
-FILE: index.html
-ACTION: create
-
-...
+<!DOCTYPE html>
+<html>...</html>
+```
 
 FILE: style.css
 ACTION: create
+```css
+body {{ margin: 0; }}
+```
 
-...
-
-FILE: app.py
-ACTION: modify
-
-...
-不允许返回 JSON
-不允许解释
-只输出 FILE + ACTION + 代码块
-
-开始分析。
+开始输出。
 """
-
-        # -------------------
-        # 调用大模型
-        # -------------------
 
         resp = (
             client.chat.completions.create(
-                model="qwen-mt-flash",
+                model="qwen-max",
                 messages=[
                     {
                         "role": "user",
                         "content": final_prompt
                     }
                 ],
-                temperature=0.2
+                temperature=0.2,
+                timeout=120.0
             )
         )
 
@@ -225,6 +214,7 @@ ACTION: modify
             resp
             .choices[0]
             .message.content
+            or ""
         )
 
         parsed_files = (
@@ -234,65 +224,34 @@ ACTION: modify
             )
         )
 
-        print("====== Parsed Files ======")
+        valid_files = [
+            item
+            for item in parsed_files
+            if item["content"].strip()
+            or item["action"] == "delete"
+        ]
 
-        for f in parsed_files:
-            print(
-                f["action"],
-                f["path"]
+        if not valid_files:
+            return {
+                "message":
+                    "未能解析到有效代码，请重试。"
+                    "请确保需求描述清晰，例如："
+                    "生成一个可运行的井字棋网页应用。",
+                "files": []
+            }
+
+        skipped = len(parsed_files) - len(valid_files)
+
+        message = (
+            f"发现 {len(valid_files)} 个有效文件变更"
+        )
+
+        if skipped > 0:
+            message += (
+                f"，已忽略 {skipped} 个空内容文件"
             )
-
-        print("====== Agent Prompt ======")
-        print(agent.system_prompt)
-
-        print("====== Final Prompt ======")
-        print(final_prompt) 
 
         return {
-            "message":
-                f"发现 {len(parsed_files)} 个文件变更",
-
-            "files":
-                parsed_files
+            "message": message,
+            "files": valid_files
         }
-    
-    @staticmethod
-    def parse_file_blocks(
-        text: str
-    ):
-
-        files = []
-
-        pattern = re.compile(
-            r"FILE:\s*(.+?)\s*\nACTION:\s*(.+?)\s*\n([\s\S]*?)(?=\nFILE:|\Z)",
-            re.S
-        )
-
-        matches = pattern.findall(
-            text
-        )
-
-        for path, action, content in matches:
-
-            # 去掉 markdown 代码块
-            content = re.sub(
-                r"^```[a-zA-Z0-9]*\n?",
-                "",
-                content.strip()
-            )
-
-            content = re.sub(
-                r"\n```$",
-                "",
-                content.strip()
-            )
-
-            files.append(
-                {
-                    "path": path.strip(),
-                    "action": action.strip(),
-                    "content": content.strip()
-                }
-            )
-
-        return files

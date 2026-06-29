@@ -1,4 +1,6 @@
-import request from "../utils/request";
+import request, {
+  LONG_REQUEST_TIMEOUT
+} from "../utils/request";
 
 export const createProject = (data: any) => {
   return request.post("/plugins", data);
@@ -32,7 +34,11 @@ export const runProject = (
   projectId: string
 ) => {
   return request.post(
-    `/plugins/${projectId}/run`
+    `/plugins/${projectId}/run`,
+    undefined,
+    {
+      timeout: LONG_REQUEST_TIMEOUT
+    }
   );
 };
 
@@ -92,6 +98,9 @@ export const editCode = (
     {
       content,
       prompt
+    },
+    {
+      timeout: LONG_REQUEST_TIMEOUT
     }
   );
 };
@@ -125,6 +134,9 @@ export const agentChat = (
     {
       project_id: projectId,
       prompt
+    },
+    {
+      timeout: LONG_REQUEST_TIMEOUT
     }
   );
 

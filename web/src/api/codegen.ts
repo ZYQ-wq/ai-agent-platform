@@ -1,4 +1,6 @@
-import request from "@/utils/request";
+import request, {
+  LONG_REQUEST_TIMEOUT
+} from "@/utils/request";
 
 export const generateCode = (
   projectId: string,
@@ -9,6 +11,9 @@ export const generateCode = (
     {
       project_id: projectId,
       prompt
+    },
+    {
+      timeout: LONG_REQUEST_TIMEOUT
     }
   );
 };
