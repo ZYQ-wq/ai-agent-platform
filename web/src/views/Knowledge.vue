@@ -99,12 +99,21 @@ export default defineComponent({
     // =====================
     const loadKB = async () => {
 
-      const res = await axios.get(
-        "http://127.0.0.1:8000/kb/list",
-        { headers: authHeader() }
-      )
+      try {
 
-      kbList.value = res.data.data
+        const res = await axios.get(
+          "http://127.0.0.1:8000/kb/list",
+          { headers: authHeader() }
+        )
+
+        kbList.value = res.data?.data || []
+
+      } catch (error) {
+
+        console.error(error)
+        kbList.value = []
+
+      }
     }
 
     // =====================

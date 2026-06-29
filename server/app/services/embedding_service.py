@@ -1,36 +1,60 @@
-# from openai import OpenAI
+import json
+from typing import Any
 
-# from app.core.config import (
-#     OPENAI_API_KEY,
-#     OPENAI_BASE_URL
-# )
+from openai import OpenAI
 
-# client = OpenAI(
-#     api_key=OPENAI_API_KEY,
-#     base_url=OPENAI_BASE_URL
-# )
-
-
-# def get_embedding(text: str):
-
-#     response = client.embeddings.create(
-#         model="text-embedding-v1",
-#         input=text
-#     )
-
-#     return response.data[0].embedding
-
-from sentence_transformers import SentenceTransformer
-
-model = SentenceTransformer(
-    "BAAI/bge-small-zh-v1.5"
+from app.core.config import (
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL
 )
 
-def get_embedding(text: str):
+EMBEDDING_MODEL = "text-embedding-v1"
 
-    vector = model.encode(
-        text,
-        normalize_embeddings=True
+client = OpenAI(
+    api_key=OPENAI_API_KEY,
+    base_url=OPENAI_BASE_URL
+)
+
+
+def normalize_embedding_vector(
+    value: Any
+) -> list[float]:
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+
+    if not isinstance(value, (list, tuple)):
+        return []
+
+    vector = []
+    for item in value:
+        try:
+            vector.append(float(item))
+        except (TypeError, ValueError):
+            return []
+
+    return vector
+
+
+def get_embedding(text: str) -> list[float]:
+    if not (text or "").strip():
+        raise ValueError("Embedding 输入文本不能为空")
+
+    response = client.embeddings.create(
+        model=EMBEDDING_MODEL,
+        input=text
     )
 
-    return vector.tolist()
+    vector = normalize_embedding_vector(
+        response.data[0].embedding
+    )
+
+    if not vector:
+        raise ValueError("Embedding 返回为空")
+
+    return vector

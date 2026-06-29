@@ -8,6 +8,8 @@ from app.api.chat import router as chat_router
 from app.api.agent import router as agent_router
 from app.api.workflow import router as workflow_router
 from app.api.knowledge import router as knowledge_router
+from app.api.plugin import router as plugin_router
+
 
 from app.core.database import Base,engine
 
@@ -15,6 +17,8 @@ from app.models.user import User
 from app.models.memory import Memory
 from app.models.agent import Agent
 from app.models.memory_summary import MemorySummary
+from app.models.plugin_project import PluginProject
+from app.models.plugin_file import PluginFile
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -54,6 +58,11 @@ app.include_router(
     knowledge_router,
     prefix="/kb",
     tags=["Knowledge Base"]
+)
+
+app.include_router(
+    plugin_router,
+    tags=["Plugins"]
 )
 
 

@@ -14,7 +14,10 @@ from app.core.auth import decode_token
 from app.schemas.knowledge import KnowledgeCreate,KnowledgeUpdate
 
 from app.schemas.search import SearchRequest
-from app.services.search_embedding_service import search_kb_service
+from app.services.search_embedding_service import (
+    search_kb_service,
+    EmbeddingDimensionError,
+)
 
 router = APIRouter()
 
@@ -238,11 +241,24 @@ def search_kb(
         authorization
     )
 
-    result = search_kb_service(
-        kb_id=kb_id,
-        query=data.query,
-        top_k=data.top_k
-    )
+    try:
+
+        result = search_kb_service(
+            kb_id=kb_id,
+            query=data.query,
+            top_k=data.top_k
+        )
+
+    except EmbeddingDimensionError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
 
     return {
         "code": 0,
