@@ -15,7 +15,13 @@
           {{ msg.role === 'user' ? '👤' : '🤖' }}
         </div>
         <div class="message-content">
-          <div class="message-text">{{ msg.content }}</div>
+          <div class="message-text">
+            {{ msg.content }}
+            <span
+              v-if="isGenerating && idx === messages.length - 1 && msg.role !== 'user'"
+              class="typing-cursor"
+            >|</span>
+          </div>
         </div>
       </div>
       <div v-if="messages.length === 0" class="empty-chat">
@@ -26,16 +32,31 @@
     <div class="chat-input-area">
       <input
         v-model="inputMessage"
-        @keyup.enter="sendMessage"
+        :disabled="isGenerating"
+        @keyup.enter="handlePrimaryAction"
         placeholder="输入消息..."
       />
-      <button @click="sendMessage">发送</button>
+      <button
+        :class="[
+          'action-btn',
+          isGenerating ? 'stop-btn' : 'send-btn'
+        ]"
+        @click="handlePrimaryAction"
+      >
+        {{ isGenerating ? "停止" : "发送" }}
+      </button>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, nextTick } from "vue";
+import {
+  defineComponent,
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  nextTick
+} from "vue";
 import axios from "axios";
 import { useRoute } from "vue-router";
 
@@ -45,12 +66,21 @@ interface Message {
   tool_call_id?: string;
 }
 
+interface StreamEvent {
+  type: string;
+  delta?: string;
+  content?: string;
+  message?: string;
+}
+
 export default defineComponent({
   setup() {
     const route = useRoute();
     const messages = ref<Message[]>([]);
     const inputMessage = ref("");
     const chatBox = ref<HTMLDivElement | null>(null);
+    const isGenerating = ref(false);
+    const abortController = ref<AbortController | null>(null);
 
     const authHeader = () => ({
       Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -77,39 +107,166 @@ export default defineComponent({
       }
     };
 
+    const stopGeneration = () => {
+      abortController.value?.abort();
+    };
+
+    const parseSseEvents = (
+      buffer: string
+    ): { events: StreamEvent[]; rest: string } => {
+      const events: StreamEvent[] = [];
+      const parts = buffer.split("\n\n");
+      const rest = parts.pop() || "";
+
+      for (const part of parts) {
+        const line = part
+          .split("\n")
+          .find((item) => item.startsWith("data: "));
+
+        if (!line) {
+          continue;
+        }
+
+        try {
+          events.push(
+            JSON.parse(line.slice(6))
+          );
+        } catch (error) {
+          console.error("解析流式消息失败", error);
+        }
+      }
+
+      return { events, rest };
+    };
+
     const sendMessage = async () => {
-      if (!inputMessage.value.trim()) return;
+      const text = inputMessage.value.trim();
+      if (!text || isGenerating.value) {
+        return;
+      }
 
       const agentId = route.params.agentId;
-      const userMsg: Message = { role: "user", content: inputMessage.value };
-      messages.value.push(userMsg);
-      scrollToBottom();
+      const token = localStorage.getItem("token");
 
-      try {
-        const res = await axios.post(
-          `http://127.0.0.1:8000/chat/${agentId}`,
-          { message: inputMessage.value },
-          { headers: authHeader() }
-        );
-        const aiMsg: Message = { role: "AI", content: res.data.response };
-        messages.value.push(aiMsg);
-        scrollToBottom();
-      } catch (err: any) {
-        messages.value.push({ role: "AI", content: "发送失败，请重试" });
-        scrollToBottom();
+      if (!token) {
+        return;
       }
 
       inputMessage.value = "";
+
+      messages.value.push({
+        role: "user",
+        content: text
+      });
+
+      const assistantIndex = messages.value.length;
+
+      messages.value.push({
+        role: "assistant",
+        content: ""
+      });
+
+      await scrollToBottom();
+
+      isGenerating.value = true;
+      abortController.value = new AbortController();
+
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:8000/chat/${agentId}/stream`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ message: text }),
+            signal: abortController.value.signal,
+          }
+        );
+
+        if (!response.ok || !response.body) {
+          throw new Error("请求失败");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const parsed = parseSseEvents(buffer);
+          buffer = parsed.rest;
+
+          for (const event of parsed.events) {
+            if (event.type === "content" && event.delta) {
+              messages.value[assistantIndex].content += event.delta;
+              await scrollToBottom();
+            }
+
+            if (event.type === "done" && event.content) {
+              messages.value[assistantIndex].content = event.content;
+            }
+
+            if (event.type === "error") {
+              throw new Error(event.message || "Agent 执行失败");
+            }
+          }
+        }
+
+        if (!messages.value[assistantIndex].content.trim()) {
+          messages.value[assistantIndex].content =
+            "未收到回复，请重试。";
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          if (!messages.value[assistantIndex].content.trim()) {
+            messages.value[assistantIndex].content =
+              "已停止生成。";
+          } else {
+            messages.value[assistantIndex].content +=
+              "\n\n[已停止]";
+          }
+        } else {
+          messages.value[assistantIndex].content =
+            err?.message || "发送失败，请重试";
+        }
+      } finally {
+        isGenerating.value = false;
+        abortController.value = null;
+        await scrollToBottom();
+      }
+    };
+
+    const handlePrimaryAction = () => {
+      if (isGenerating.value) {
+        stopGeneration();
+        return;
+      }
+
+      sendMessage();
     };
 
     onMounted(() => {
       loadHistory();
     });
 
+    onBeforeUnmount(() => {
+      stopGeneration();
+    });
+
     return {
       messages,
       inputMessage,
-      sendMessage,
+      isGenerating,
+      handlePrimaryAction,
       chatBox,
     };
   },
@@ -196,6 +353,11 @@ export default defineComponent({
 .message-text {
   word-break: break-word;
   line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.typing-cursor {
+  animation: blink 1s step-end infinite;
 }
 
 .empty-chat {
@@ -217,6 +379,28 @@ export default defineComponent({
   margin-bottom: 0;
 }
 
+.action-btn {
+  min-width: 88px;
+  border: none;
+  border-radius: 12px;
+  padding: 0 18px;
+  cursor: pointer;
+  color: white;
+}
+
+.send-btn {
+  background: var(--accent);
+}
+
+.stop-btn {
+  background: #ef4444;
+}
+
+.action-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -225,6 +409,12 @@ export default defineComponent({
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
   }
 }
 </style>

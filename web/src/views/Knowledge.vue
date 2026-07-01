@@ -3,7 +3,10 @@
 
     <!-- 顶部 -->
     <div class="header">
-      <h2>📚 我的知识库</h2>
+      <div class="header-left">
+        <router-link to="/plaza" class="back-link">← 返回广场</router-link>
+        <h2>📚 我的知识库</h2>
+      </div>
 
       <button class="create-btn" @click="showCreate = true">
         + 新建知识库
@@ -29,12 +32,8 @@
 
         <div class="kb-actions">
 
-          <button @click="goDetail(kb.id)">
+          <button @click="goManage(kb.id)">
             管理
-          </button>
-
-          <button @click="uploadFile(kb.id)">
-            上传
           </button>
 
           <button class="danger" @click="deleteKb(kb.id)">
@@ -147,16 +146,9 @@ export default defineComponent({
     }
 
     // =====================
-    // 跳转详情
+    // 进入知识库管理
     // =====================
-    const goDetail = (id: number) => {
-      router.push(`/kb/${id}`)
-    }
-
-    // =====================
-    // 上传文件
-    // =====================
-    const uploadFile = (id: number) => {
+    const goManage = (id: number) => {
       router.push(`/kb/upload/${id}`)
     }
 
@@ -170,8 +162,7 @@ export default defineComponent({
       form,
       createKb,
       deleteKb,
-      goDetail,
-      uploadFile
+      goManage
     }
   }
 })
@@ -186,6 +177,35 @@ export default defineComponent({
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header-left h2 {
+  margin: 0;
+}
+
+.back-link {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.create-btn {
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: #667eea;
+  color: white;
+  cursor: pointer;
 }
 
 .kb-list {

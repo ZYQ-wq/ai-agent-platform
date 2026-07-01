@@ -1,8 +1,10 @@
-# Engineering Constitution
+# Engineering Constitution for AI Agents
 
-> This repository is an AI Agent Platform. Stability, consistency, and extensibility are more important than introducing new ideas. Every change should integrate into the existing architecture instead of reshaping it.
+> This repository is an AI Agent Platform.
+> Stability, consistency, and extensibility are more important than introducing new ideas.
+> Every change should integrate into the existing architecture instead of reshaping it.
 
-These principles override all implementation details unless explicitly instructed otherwise.
+These principles override implementation preferences unless explicitly instructed otherwise.
 
 ---
 
@@ -10,140 +12,185 @@ These principles override all implementation details unless explicitly instructe
 
 Before writing code:
 
-* Understand the user's actual goal.
-* Read the relevant implementation first.
-* Understand how the affected module fits into the overall architecture.
-* Identify the root cause instead of treating symptoms.
-* Think through the impact on related modules before making changes.
+- Understand the actual goal.
+- Read the relevant implementation.
+- Understand how the module fits into the system.
+- Identify the root cause.
+- Consider the impact on related modules.
 
-Never begin implementation immediately after reading a request.
+Never implement immediately after reading a request.
 
-If requirements are unclear, ask questions instead of making assumptions.
-
----
-
-# 2. Integrate, Don't Reinvent
-
-This project already has its own architecture.
-
-When implementing new functionality:
-
-* Reuse existing services.
-* Reuse existing APIs.
-* Reuse existing UI components.
-* Reuse existing plugin interfaces.
-* Reuse existing workflow mechanisms.
-
-Avoid introducing new patterns when existing ones already solve the problem.
-
-Consistency is always preferred over novelty.
+If requirements are unclear, ask instead of assuming.
 
 ---
 
-# 3. Minimal, Targeted Changes
+# 2. Search Before You Create
 
-Every modification should be as small as possible.
+Before implementing:
 
-Rules:
+- Search existing implementations.
+- Search shared utilities.
+- Search reusable components.
+- Search existing services.
+- Search plugin interfaces.
+- Search workflow mechanisms.
 
-* Only modify code directly related to the requested task.
-* Do not refactor unrelated modules.
-* Do not reorganize folders.
-* Do not rename existing APIs.
-* Do not change project structure.
-* Do not perform "cleanup" outside the task scope.
+Do not assume functionality does not already exist.
+
+Reuse before creating.
+
+---
+
+# 3. Integrate, Don't Reinvent
+
+Extend the existing architecture.
+
+Prefer reusing:
+
+- Services
+- APIs
+- Components
+- Plugin interfaces
+- Workflow mechanisms
+
+Consistency is preferred over novelty.
+
+---
+
+# 4. Minimal, Targeted Changes
+
+Every change should be as small as possible.
+
+- Modify only what is required.
+- Do not refactor unrelated modules.
+- Do not reorganize project structure.
+- Do not rename existing APIs.
+- Do not perform unrelated cleanup.
 
 If ten lines solve the problem, do not rewrite one hundred.
 
 ---
 
-# 4. Respect System Boundaries
+# 5. Respect System Boundaries
 
-This project consists of multiple independent domains:
+Treat each subsystem independently:
 
-* Frontend
-* Backend
-* Plugin Runtime
-* Workflow Engine
-* Docker Sandbox
-* Database
-* Agent Runtime
+- Frontend
+- Backend
+- Plugin Runtime
+- Workflow Engine
+- Docker Sandbox
+- Database
+- Agent Runtime
 
-Treat each domain as an independent subsystem.
-
-Never modify another subsystem simply because it is technically possible.
-
-Changes should remain within the intended boundary whenever possible.
+Avoid crossing subsystem boundaries unless required.
 
 ---
 
-# 5. Platform Stability Comes First
+# 6. Platform Stability First
 
-This is a platform rather than a single application.
+This repository is a platform.
 
-Therefore:
+Preserve whenever possible:
 
-* Preserve backward compatibility whenever possible.
-* Avoid breaking existing APIs.
-* Avoid changing plugin contracts.
-* Avoid changing workflow behavior.
-* Avoid changing data models without necessity.
+- Public APIs
+- Plugin contracts
+- Workflow behavior
+- Data models
+- Backward compatibility
 
 A stable platform is more valuable than a "better" implementation.
 
 ---
 
-# 6. Large Changes Require Approval
+# 7. Large Changes Require Approval
 
-Before performing any of the following:
+Before performing:
 
-* Architecture redesign
-* Database schema changes
-* Plugin interface changes
-* Workflow engine changes
-* Docker runtime changes
-* Public API changes
-* Introducing new dependencies
-* Large-scale refactoring
+- Architecture redesign
+- Database schema changes
+- Plugin interface changes
+- Workflow engine changes
+- Docker runtime changes
+- Public API changes
+- New dependencies
+- Large-scale refactoring
 
-First explain:
+Explain:
 
-* Why the change is necessary.
-* Which files will be affected.
-* Potential risks.
-* Alternative approaches.
+- Why
+- Affected files
+- Risks
+- Alternatives
 
-Wait for confirmation before implementation.
+Wait for approval before proceeding.
 
-Never perform large structural changes silently.
+---
+
+# 8. Default Assumptions
+
+Unless instructed otherwise:
+
+- Preserve public APIs.
+- Preserve plugin contracts.
+- Preserve workflow behavior.
+- Preserve file structure.
+- Preserve naming conventions.
+- Preserve backward compatibility.
+
+Assume existing behavior should remain unchanged.
+
+---
+
+# 9. Verification
+
+Before completing work, verify:
+
+- Existing behavior remains unchanged.
+- Requested functionality works.
+- No unrelated files were modified.
+- No duplicate implementation was introduced.
+- Architecture remains consistent.
 
 ---
 
 # Engineering Decision Priority
-
-Whenever multiple implementations are possible, follow this priority:
 
 1. Correctness
 2. Platform Stability
 3. Architectural Consistency
 4. Simplicity
 5. Maintainability
-6. Performance Optimization
+6. Performance
 
-Never sacrifice long-term maintainability for short-term optimization.
+Never sacrifice maintainability for optimization.
+
+---
+
+# When in Doubt
+
+If uncertain:
+
+- Do not guess.
+- Do not invent missing information.
+- Read more code.
+- Ask for clarification.
+- Preserve existing behavior.
 
 ---
 
 # Default Working Style
 
-Unless explicitly instructed otherwise:
+Unless instructed otherwise:
 
-* Think before coding.
-* Reuse before creating.
-* Modify before rewriting.
-* Extend before replacing.
-* Explain before restructuring.
+- Think before coding.
+- Read before modifying.
+- Search before creating.
+- Reuse before implementing.
+- Modify before rewriting.
+- Extend before replacing.
+- Verify before finishing.
 
 Your goal is not to build a new project.
 
-Your goal is to evolve the existing project safely and predictably.
+Your goal is to evolve the existing project safely, predictably, and consistently.
