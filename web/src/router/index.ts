@@ -13,7 +13,6 @@ import WorkflowStudio from "../views/WorkflowStudio.vue";
 import Plaza from "../views/Plaza.vue";
 import WorkflowManagement from "../views/WorkflowManagement.vue";
 import Knowledge from "../views/Knowledge.vue";
-import KBDetail from "../views/KBDetail.vue";
 import KBUpload from "../views/KBUpload.vue";
 
 const routes: RouteRecordRaw[] = [
@@ -47,8 +46,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: "/kb/:id",
-    component: KBDetail,
-    meta: { requiresAuth: true }
+    redirect: (to) => `/kb/upload/${to.params.id}`
   },
   {
     path: "/coding",

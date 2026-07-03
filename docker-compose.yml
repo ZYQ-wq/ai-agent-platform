@@ -1,0 +1,45 @@
+# AI Agent Platform — Docker Compose 骨架
+#
+# 使用前：
+#   1. cp .env.example server/.env 并填写密钥
+#   2. docker compose up -d --build
+#
+# 访问：
+#   前端 http://localhost:8080
+#   后端 http://localhost:8000  （调试/API 直连）
+#
+# 说明：
+#   - backend 挂载 Docker Socket，供 AI 编程沙箱运行用户代码
+#   - 生产环境建议在前面再加一层 HTTPS 反向代理（如阿里云 SLB / Nginx）
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    container_name: ai-agent-backend
+    restart: unless-stopped
+    env_file:
+      - server/.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server/uploads:/app/uploads
+      - ./server/ai_agent_platform.db:/app/ai_agent_platform.db
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Linux 上若沙箱权限有问题，可取消注释：
+    # group_add:
+    #   - "${DOCKER_GID:-999}"
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: ai-agent-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend

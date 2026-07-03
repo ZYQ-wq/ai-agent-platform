@@ -1,7 +1,10 @@
 <template>
   <div class="container">
     <div class="header">
-      <h2>我的 Agent 工作室</h2>
+      <div class="header-left">
+        <router-link to="/plaza" class="back-link">← 返回广场</router-link>
+        <h2>我的 Agent 工作室</h2>
+      </div>
       <button class="create-btn" @click="openCreate">+ 新建 Agent</button>
     </div>
 
@@ -129,6 +132,26 @@ export default {
   margin-bottom: 32px;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.header-left h2 {
+  margin: 0;
 }
 
 .create-btn {

@@ -4,7 +4,7 @@ export const DEFAULT_REQUEST_TIMEOUT = 30000;
 export const LONG_REQUEST_TIMEOUT = 180000;
 
 const request = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
   timeout: DEFAULT_REQUEST_TIMEOUT,
 });
 

@@ -637,8 +637,14 @@ const handleApplyChanges =
       <!-- 顶部工具栏 -->
       <div class="toolbar">
 
-        <div class="project-name">
-          {{ currentProject?.name }}
+        <div class="toolbar-left">
+          <router-link to="/plaza" class="back-link">
+            ← 返回广场
+          </router-link>
+
+          <div class="project-name">
+            {{ currentProject?.name || "AI 编程" }}
+          </div>
         </div>
 
         <div class="actions">
@@ -768,9 +774,30 @@ const handleApplyChanges =
   background: white;
 }
 
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.back-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
 .project-name {
   font-size: 14px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .actions {
