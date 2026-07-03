@@ -231,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, watch } from "vue"
 import { useRoute } from "vue-router"
 import axios from "axios"
 import {
@@ -247,11 +247,28 @@ import "@vue-flow/core/dist/theme-default.css"
 import type { Node, Edge, NodeMouseEvent } from "@vue-flow/core"
 
 const route = useRoute()
-const workflowId = ref(route.query.id ? parseInt(route.query.id as string) : null)
+const workflowId = ref(
+  route.query.id
+    ? parseInt(route.query.id as string)
+    : null
+)
 
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
-const selectedNode = ref<Node | null>(null)
+const selectedNodeId = ref<string | null>(null)
+const isLoading = ref(false)
+
+const selectedNode = computed(() => {
+  if (!selectedNodeId.value) {
+    return null
+  }
+
+  return (
+    nodes.value.find(
+      (node) => node.id === selectedNodeId.value
+    ) || null
+  )
+})
 
 // ====================
 // 试运行
@@ -271,6 +288,37 @@ let currentId = 1
 
 const nodeTypes = {
   workflow: WorkflowNode
+}
+
+function syncNextNodeId() {
+  const numericIds = nodes.value
+    .map((node) => parseInt(String(node.id), 10))
+    .filter((id) => !Number.isNaN(id))
+
+  currentId = numericIds.length
+    ? Math.max(...numericIds) + 1
+    : 1
+}
+
+function createNodeId() {
+  return String(currentId++)
+}
+
+function hasStartNode() {
+  return nodes.value.some(
+    (node: any) => node.data.type === "start"
+  )
+}
+
+function getDefaultPosition(type: string) {
+  const sameTypeCount = nodes.value.filter(
+    (node: any) => node.data.type === type
+  ).length
+
+  return {
+    x: 120 + sameTypeCount * 40,
+    y: 120 + sameTypeCount * 120
+  }
 }
 
 // 计算当前节点可引用的上游输出变量（用于变量下拉框）
@@ -316,15 +364,21 @@ const startVariableName = computed(() => {
 
 // 事件处理
 const onNodeClick = ({ node }: NodeMouseEvent) => {
-  selectedNode.value = node
+  selectedNodeId.value = String(node.id)
 }
 
 const onPaneClick = () => {
-  selectedNode.value = null
+  selectedNodeId.value = null
 }
 
 const onConnect = (params: any) => {
-  edges.value = addEdge(params, edges.value)
+  edges.value = addEdge(
+    {
+      ...params,
+      id: `e-${params.source}-${params.target}-${Date.now()}`
+    },
+    edges.value
+  )
 }
 
 // 辅助函数：创建一个带值结构的输入变量
@@ -354,10 +408,14 @@ function openRunDialog() {
 
 // 添加节点的方法（确保 inputs 使用新的结构）
 function addLLM() {
+  if (isLoading.value) {
+    return
+  }
+
   nodes.value.push({
-    id: String(currentId++),
+    id: createNodeId(),
     type: "workflow",
-    position: { x: 300, y: 300 },
+    position: getDefaultPosition("llm"),
     data: {
       label: "Qwen",
       type: "llm",
@@ -373,10 +431,14 @@ function addLLM() {
 }
 
 function addTool() {
+  if (isLoading.value) {
+    return
+  }
+
   nodes.value.push({
-    id: String(currentId++),
+    id: createNodeId(),
     type: "workflow",
-    position: { x: 300, y: 100 },
+    position: getDefaultPosition("tool"),
     data: {
       label: "搜索工具",
       type: "tool",
@@ -387,10 +449,19 @@ function addTool() {
 }
 
 function addStart() {
+  if (isLoading.value) {
+    return
+  }
+
+  if (hasStartNode()) {
+    alert("开始节点已存在，每个工作流只需一个开始节点")
+    return
+  }
+
   nodes.value.push({
-    id: String(currentId++),
+    id: createNodeId(),
     type: "workflow",
-    position: { x: 100, y: 200 },
+    position: getDefaultPosition("start"),
     data: {
       label: "开始节点",
       type: "start",
@@ -401,10 +472,14 @@ function addStart() {
 }
 
 function addEnd() {
+  if (isLoading.value) {
+    return
+  }
+
   nodes.value.push({
-    id: String(currentId++),
+    id: createNodeId(),
     type: "workflow",
-    position: { x: 600, y: 200 },
+    position: getDefaultPosition("output"),
     data: {
       label: "结束节点",
       type: "output",
@@ -514,24 +589,33 @@ const handleManualSave = async () => {
 // 关闭面板时静默保存
 const handleClosePanel = async () => {
   await saveWorkflow(false)
-  selectedNode.value = null
+  selectedNodeId.value = null
 }
 
 // 加载工作流（后端格式 -> 前端编辑格式）
 const loadWorkflow = async () => {
-  if (!workflowId.value) return
+  if (!workflowId.value) {
+    nodes.value = []
+    edges.value = []
+    selectedNodeId.value = null
+    syncNextNodeId()
+    return
+  }
+
+  isLoading.value = true
+  selectedNodeId.value = null
+
   try {
     const token = localStorage.getItem('token')
     const res = await axios.get(`http://127.0.0.1:8000/workflow/${workflowId.value}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     const workflow = res.data
-    nodes.value = []
-    edges.value = []
-    currentId = 1
+    const loadedNodes: Node[] = []
+    const loadedEdges: Edge[] = []
 
     if (workflow.nodes) {
-      workflow.nodes.forEach((node: any) => {
+      workflow.nodes.forEach((node: any, index: number) => {
         let inputsData = node.inputs || []
         // 如果不是开始节点，需要将后端存储的 value 对象展开为 valueKind 和具体值字段
         if (node.node_type !== 'start') {
@@ -565,40 +649,59 @@ const loadWorkflow = async () => {
             }
           })
         }
-        nodes.value.push({
-          id: node.node_id,
+        loadedNodes.push({
+          id: String(node.node_id),
           type: "workflow",
-          position: { x: 100 + (currentId * 100), y: 200 },
+          position: {
+            x: 120 + (index % 4) * 220,
+            y: 120 + Math.floor(index / 4) * 160
+          },
           data: {
             label: node.name,
             type: node.node_type,
             inputs: inputsData,
             outputs: node.outputs || [],
+            model: node.config?.model || "",
             config: node.config || {}
           }
         })
-        currentId++
       })
     }
 
     if (workflow.edges) {
-      workflow.edges.forEach((edge: any) => {
-        edges.value.push({
-          source: edge.source_node,
-          target: edge.target_node
+      workflow.edges.forEach((edge: any, index: number) => {
+        const source = String(edge.source_node)
+        const target = String(edge.target_node)
+
+        loadedEdges.push({
+          id: `e-${source}-${target}-${index}`,
+          source,
+          target
         })
       })
     }
+
+    nodes.value = loadedNodes
+    edges.value = loadedEdges
+    syncNextNodeId()
   } catch (error) {
     console.error('加载工作流失败:', error)
     alert('加载工作流失败')
+  } finally {
+    isLoading.value = false
   }
 }
 
-// 如果存在工作流ID，加载数据
-if (workflowId.value) {
-  loadWorkflow()
-}
+watch(
+  () => route.query.id,
+  (id) => {
+    workflowId.value = id
+      ? parseInt(id as string)
+      : null
+    loadWorkflow()
+  },
+  { immediate: true }
+)
 
 const runWorkflow = async () => {
 
@@ -686,6 +789,27 @@ const runWorkflow = async () => {
   padding: 0 20px;
   border-bottom: 1px solid #ddd;
   background: white;
+}
+
+.back-link {
+  color: #409eff;
+  text-decoration: none;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.loading-tip {
+  color: #909399;
+  font-size: 13px;
+}
+
+.toolbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .toolbar button {
